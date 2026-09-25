@@ -5,7 +5,8 @@ echo "=========================================="
 echo " Building Origin OS APK (com.autonavi.minimap) "
 echo "=========================================="
 
-# Ensure output directory exists
+# Clean previous build outputs
+rm -rf build-outputs
 mkdir -p build-outputs
 
 # Ensure debug keystore exists
@@ -24,13 +25,13 @@ else
     exit 1
 fi
 
-# Locate built APK and copy to root output
-APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+# Locate built APK and copy only as single Origin_OS.apk
+APK_PATH=$(find app/build/outputs/apk/ -type f -name "*.apk" | head -n 1)
 
 if [ -f "$APK_PATH" ]; then
     cp "$APK_PATH" "build-outputs/Origin_OS.apk"
     echo "=========================================="
-    echo " Success! APK built successfully:"
+    echo " Single APK created successfully:"
     echo " Location: build-outputs/Origin_OS.apk"
     echo " Package ID: com.autonavi.minimap"
     echo " Application: Origin OS"

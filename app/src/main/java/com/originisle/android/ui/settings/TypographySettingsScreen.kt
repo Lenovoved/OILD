@@ -19,12 +19,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FormatPaint
-import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,15 +32,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.originisle.android.service.NotificationCastListener
+import com.originisle.android.ui.OriginOSSlider
 import com.originisle.android.ui.PREFS_NAME
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun TypographySettingsScreen(
@@ -54,19 +54,16 @@ fun TypographySettingsScreen(
     var notifStyle by remember {
         mutableStateOf(prefs.getString("notification_display_style", "classic") ?: "classic")
     }
-    var notifFont by remember {
-        mutableStateOf(prefs.getString("notification_font_family", "default") ?: "default")
+    var capsuleCharsFloat by remember {
+        mutableFloatStateOf(prefs.getInt("notification_capsule_chars", 24).coerceIn(8, 100).toFloat())
     }
-    var notifFontSize by remember {
-        mutableStateOf(prefs.getString("notification_font_size", "normal") ?: "normal")
-    }
-    var capsuleChars by remember {
-        mutableIntStateOf(prefs.getInt("notification_capsule_chars", 16))
-    }
-    var bodyChars by remember {
-        mutableIntStateOf(prefs.getInt("notification_body_chars", 80))
+    var bodyCharsFloat by remember {
+        mutableFloatStateOf(prefs.getInt("notification_body_chars", 120).coerceIn(20, 500).toFloat())
     }
     val showTimestamp = prefs.getBoolean("notification_show_timestamp", true)
+
+    val capsuleChars = capsuleCharsFloat.roundToInt()
+    val bodyChars = bodyCharsFloat.roundToInt()
 
     Column(
         modifier = Modifier
@@ -74,8 +71,8 @@ fun TypographySettingsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         SettingsTopBar(
-            title = "Стиль, шрифты и лимиты",
-            subtitle = "Настройка типографики, шаблона карточки и длины текста",
+            title = "Стиль и лимиты символов",
+            subtitle = "Настройка шаблона карточки и длины текста в капсуле и теле сообщения",
             onBack = onBack,
         )
 
@@ -112,127 +109,125 @@ fun TypographySettingsScreen(
                 )
             }
 
-            // Font Family
+            // Capsule Character Limit Slider (8..100)
             SettingsCard {
-                SettingsSectionHeader("Гарнитура шрифта", Icons.Default.TextFields)
+                SettingsSectionHeader("Символы в капсуле", Icons.Default.TextFields)
 
-                SettingsChipsRow(
-                    items = listOf(
-                        "default" to "Системный",
-                        "sans" to "Sans-Serif",
-                        "serif" to "Serif",
-                        "mono" to "Моноширинный",
-                        "rounded" to "Скругленный OriginOS",
-                    ),
-                    selectedItem = notifFont,
-                    onSelect = { f ->
-                        notifFont = f
-                        prefs.edit().putString("notification_font_family", f).apply()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Лимит символов в заголовке / капсуле",
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFE0EDFF))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = "$capsuleChars симв.",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0066FF),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OriginOSSlider(
+                    value = capsuleCharsFloat,
+                    onValueChange = { newVal ->
+                        capsuleCharsFloat = newVal
+                        val rounded = newVal.roundToInt()
+                        prefs.edit().putInt("notification_capsule_chars", rounded).apply()
                         NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
                     },
+                    valueRange = 8f..100f,
+                    steps = 91, // (100 - 8 - 1) = 91 steps for integer precision 8..100
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("8 (мин)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                    Text("24 (стандарт)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                    Text("100 (макс)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                }
             }
 
-            // Font Size
+            // Message Body Character Limit Slider (20..500)
             SettingsCard {
-                SettingsSectionHeader("Размер текста", Icons.Default.FormatSize)
+                SettingsSectionHeader("Символы в теле сообщения", Icons.Default.TextFields)
 
-                SettingsChipsRow(
-                    items = listOf(
-                        "small" to "Мелкий (12sp)",
-                        "normal" to "Обычный (14sp)",
-                        "large" to "Крупный (16sp)",
-                    ),
-                    selectedItem = notifFontSize,
-                    onSelect = { sz ->
-                        notifFontSize = sz
-                        prefs.edit().putString("notification_font_size", sz).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
-                    },
-                )
-            }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Лимит текста сообщения",
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFE0EDFF))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = "$bodyChars симв.",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0066FF),
+                        )
+                    }
+                }
 
-            // Character Limits
-            SettingsCard {
-                SettingsSectionHeader("Количество отображаемых символов", Icons.Default.TextFields)
-
-                Text(
-                    text = "Максимум символов в капсуле островка: $capsuleChars",
-                    fontSize = 13.5.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF334155),
-                )
                 Spacer(modifier = Modifier.height(8.dp))
-                SettingsChipsRow(
-                    items = listOf(
-                        8 to "8",
-                        12 to "12",
-                        16 to "16",
-                        24 to "24",
-                        32 to "32",
-                    ),
-                    selectedItem = capsuleChars,
-                    onSelect = { c ->
-                        capsuleChars = c
-                        prefs.edit().putInt("notification_capsule_chars", c).apply()
+
+                OriginOSSlider(
+                    value = bodyCharsFloat,
+                    onValueChange = { newVal ->
+                        bodyCharsFloat = newVal
+                        val rounded = (newVal / 5f).roundToInt() * 5
+                        prefs.edit().putInt("notification_body_chars", rounded).apply()
                         NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
                     },
+                    valueRange = 20f..500f,
+                    steps = 47, // step of 10
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = if (bodyChars == 0) "Символов в теле сообщения: Без ограничений" else "Символов в теле сообщения: $bodyChars",
-                    fontSize = 13.5.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF334155),
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                SettingsChipsRow(
-                    items = listOf(
-                        40 to "40",
-                        60 to "60",
-                        80 to "80",
-                        120 to "120",
-                        200 to "200",
-                        0 to "Все",
-                    ),
-                    selectedItem = bodyChars,
-                    onSelect = { b ->
-                        bodyChars = b
-                        prefs.edit().putInt("notification_body_chars", b).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
-                    },
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("20 (кратко)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                    Text("120 (стандарт)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                    Text("500 (полный)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                }
             }
 
             // Live Preview Card
             SettingsCard {
                 SettingsSectionHeader("Предварительный просмотр", Icons.Default.FormatPaint)
 
-                val sampleTitle = "Telegram • Александр"
-                val sampleBody = "Привет! Встречаемся сегодня в 18:30 в кофейне у парка?"
+                val sampleTitle = "Telegram • Александр Смирнов"
+                val sampleBody = "Привет! Встречаемся сегодня в 18:30 в кофейне у парка? Я уже заказал столик на летней террасе и жду подтверждения."
                 val timeString = if (showTimestamp) SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) else "18:30"
 
-                val font = when (notifFont) {
-                    "sans" -> FontFamily.SansSerif
-                    "serif" -> FontFamily.Serif
-                    "mono" -> FontFamily.Monospace
-                    else -> FontFamily.Default
-                }
-
-                val textSize = when (notifFontSize) {
-                    "small" -> 12.sp
-                    "large" -> 16.sp
-                    else -> 14.sp
-                }
-
-                val chip = if (capsuleChars > 0 && timeString.length > capsuleChars) timeString.take(capsuleChars) + "…" else timeString
-                val body = if (bodyChars > 0 && sampleBody.length > bodyChars) sampleBody.take(bodyChars) + "…" else sampleBody
+                val capsuleTitle = if (sampleTitle.length > capsuleChars) sampleTitle.take(capsuleChars) + "…" else sampleTitle
+                val chip = if (timeString.length > capsuleChars) timeString.take(capsuleChars) + "…" else timeString
+                val body = if (sampleBody.length > bodyChars) sampleBody.take(bodyChars) + "…" else sampleBody
 
                 Column(
                     modifier = Modifier
@@ -266,10 +261,9 @@ fun TypographySettingsScreen(
                             }
                             if (notifStyle != "minimal") {
                                 Text(
-                                    text = sampleTitle,
+                                    text = capsuleTitle,
                                     color = Color.White,
-                                    fontSize = 12.sp,
-                                    fontFamily = font,
+                                    fontSize = 12.5.sp,
                                     fontWeight = FontWeight.Medium,
                                 )
                             }
@@ -284,7 +278,6 @@ fun TypographySettingsScreen(
                                 text = chip,
                                 color = Color.White,
                                 fontSize = 11.5.sp,
-                                fontFamily = font,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
@@ -304,15 +297,14 @@ fun TypographySettingsScreen(
                             text = sampleTitle,
                             color = Color(0xFF94A3B8),
                             fontSize = 11.5.sp,
-                            fontFamily = font,
+                            fontWeight = FontWeight.Medium,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = body,
                             color = Color.White,
-                            fontSize = textSize,
-                            fontFamily = font,
-                            lineHeight = (textSize.value + 4).sp,
+                            fontSize = 14.sp,
+                            lineHeight = 19.sp,
                         )
                     }
                 }

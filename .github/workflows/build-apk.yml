@@ -44,10 +44,7 @@ jobs:
           fi
           chmod +x gradlew 2>/dev/null || true
 
-      - name: Build Debug APK
-        run: gradle :app:assembleDebug --stacktrace
-
-      - name: Build Release APK
+      - name: Build APK
         run: |
           if [ -n "${{ secrets.STORE_PASSWORD }}" ] && [ -n "${{ secrets.KEY_PASSWORD }}" ]; then
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-upload-key.jks
@@ -56,31 +53,31 @@ jobs:
             export KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
             gradle :app:assembleRelease --stacktrace
           else
-            echo "Building standard release / debug APK"
-            gradle :app:assembleRelease --stacktrace || true
+            gradle :app:assembleDebug --stacktrace
           fi
 
-      - name: Prepare APK Outputs
+      - name: Prepare Single APK Output
         run: |
+          rm -rf build-outputs
           mkdir -p build-outputs
-          find app/build/outputs/apk/ -name "*.apk" -exec cp {} build-outputs/ \;
-          cd build-outputs
-          for file in *.apk; do
-            if [[ "$file" == *"debug"* ]]; then
-              cp "$file" "Origin_OS_debug.apk"
-            elif [[ "$file" == *"release"* ]]; then
-              cp "$file" "Origin_OS_release.apk"
-            fi
-          done
-          # Ensure Origin_OS.apk exists
-          if [ -f "Origin_OS_debug.apk" ] && [ ! -f "Origin_OS.apk" ]; then
-            cp "Origin_OS_debug.apk" "Origin_OS.apk"
+          
+          # Find the built release or debug APK
+          APK_FILE=$(find app/build/outputs/apk/ -type f -name "*.apk" | head -n 1)
+          if [ -f "$APK_FILE" ]; then
+            cp "$APK_FILE" build-outputs/Origin_OS.apk
+            echo "Successfully packaged single APK: build-outputs/Origin_OS.apk"
+          else
+            echo "Error: No APK found after build"
+            exit 1
           fi
-          ls -la
+          
+          cd build-outputs
+          ls -lh
 
-      - name: Upload APK Artifacts
+      - name: Upload Single APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Origin_OS_APK
-          path: build-outputs/*.apk
+          path: build-outputs/Origin_OS.apk
+          if-no-files-found: error
           retention-days: 30

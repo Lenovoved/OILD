@@ -5,9 +5,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.Icon
 import android.service.notification.StatusBarNotification
-import android.text.SpannableString
-import android.text.style.RelativeSizeSpan
-import android.text.style.TypefaceSpan
 import androidx.core.app.NotificationCompat
 import com.originisle.android.R
 import com.originisle.android.island.OriginIslandConstants
@@ -43,11 +40,9 @@ object GenericCard {
             extras.getString(NotificationCompat.EXTRA_TEMPLATE) == "android.app.Notification\$CallStyle"
 
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val maxCapsuleChars = prefs.getInt("notification_capsule_chars", 16)
-        val maxBodyChars = prefs.getInt("notification_body_chars", 80)
+        val maxCapsuleChars = prefs.getInt("notification_capsule_chars", 24).coerceIn(8, 100)
+        val maxBodyChars = prefs.getInt("notification_body_chars", 120).coerceIn(20, 1000)
         val notifStyle = prefs.getString("notification_display_style", "classic") ?: "classic"
-        val notifFont = prefs.getString("notification_font_family", "default") ?: "default"
-        val notifFontSize = prefs.getString("notification_font_size", "normal") ?: "normal"
         val notifShowTimestamp = prefs.getBoolean("notification_show_timestamp", true)
         val autoDismissSec = prefs.getInt("cast_auto_dismiss_seconds", 0)
 
@@ -95,11 +90,17 @@ object GenericCard {
             else -> ""
         }
 
-        // Trim capsule / chip according to user's capsule character limit
+        // Trim capsule / chip according to user's capsule character limit (8..100)
         val chip = if (maxCapsuleChars > 0 && rawChip.length > maxCapsuleChars) {
             rawChip.take(maxCapsuleChars) + "…"
         } else {
             rawChip
+        }
+
+        val capsuleTitle = if (maxCapsuleChars > 0 && rawTitle.length > maxCapsuleChars) {
+            rawTitle.take(maxCapsuleChars) + "…"
+        } else {
+            rawTitle
         }
 
         n.smallIcon?.let { IconCache.activeSmallIcons[id] = it }
@@ -119,22 +120,18 @@ object GenericCard {
         val finalChip = if (isMaps) rawText.ifBlank { chip } else style?.chip ?: chip
         val ringSaysItAll = finalChip.isBlank() || finalChip == percentText
 
-        // Apply font family and size to text
-        val styledTitle = applyFontStyling(rawTitle, notifFont, notifFontSize)
-        val styledText = applyFontStyling(bodyText.ifBlank { finalChip }.ifBlank { appLabel }, notifFont, notifFontSize)
-
         val intent = Intent(context, PlaygroundService::class.java).apply {
             action = PlaygroundService.ACTION_START
             putExtra("id", id)
             putExtra("category", category)
             putExtra("is_ongoing", isLive)
             putExtra("oi_scene", if (category == "navigation") "NAVIGATION" else "NAVIGATION")
-            putExtra("title", styledTitle.toString())
-            putExtra("text", styledText.toString())
+            putExtra("title", rawTitle)
+            putExtra("text", bodyText.ifBlank { finalChip }.ifBlank { appLabel })
             putExtra("subtext", rawSubText)
             putExtra("source_app", appLabel)
             putExtra("source_pkg", sbn.packageName)
-            putExtra("oi_left_content", if (notifStyle == "minimal") "" else rawTitle)
+            putExtra("oi_left_content", if (notifStyle == "minimal") "" else capsuleTitle)
             putExtra("oi_right_content", finalChip)
             putExtra("status_chip_text", finalChip)
             putExtra("icon_res", R.mipmap.ic_launcher_round)
@@ -208,31 +205,6 @@ object GenericCard {
             }
         }
         context.startService(intent)
-    }
-
-    /** Applies font family and size scaling to text using SpannableString. */
-    fun applyFontStyling(text: String, font: String, size: String): CharSequence {
-        if (text.isEmpty()) return text
-        val span = SpannableString(text)
-        val typefaceFamily = when (font) {
-            "sans" -> "sans-serif"
-            "serif" -> "serif"
-            "mono" -> "monospace"
-            "rounded" -> "sans-serif-rounded"
-            else -> null
-        }
-        typefaceFamily?.let {
-            span.setSpan(TypefaceSpan(it), 0, text.length, SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
-        val sizeFactor = when (size) {
-            "small" -> 0.85f
-            "large" -> 1.15f
-            else -> 1.0f
-        }
-        if (sizeFactor != 1.0f) {
-            span.setSpan(RelativeSizeSpan(sizeFactor), 0, text.length, SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
-        return span
     }
 
     /** A colourful icon for a call: the caller's avatar if the notification carries one, else the app icon. */

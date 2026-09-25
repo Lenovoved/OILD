@@ -691,6 +691,9 @@ class NotificationCastListener : NotificationListenerService() {
             }
             log(sbn, "cast — messenger", true)
             GenericCard.post(applicationContext, sbn, isLive = false, category = "messenger")
+            if (prefs.getBoolean("cast_hide_source_notification", true)) {
+                runCatching { cancelNotification(sbn.key) }
+            }
             return
         }
 
@@ -712,7 +715,12 @@ class NotificationCastListener : NotificationListenerService() {
                 if (lastCastPostTime.put(sbn.key, sbn.postTime) == sbn.postTime) {
                     log(sbn, "skipped — duplicate delivery, unchanged", false); return
                 }
-                castPayment(sbn, it); log(sbn, "cast — payment", true); return
+                castPayment(sbn, it)
+                log(sbn, "cast — payment", true)
+                if (prefs.getBoolean("cast_hide_source_notification", true)) {
+                    runCatching { cancelNotification(sbn.key) }
+                }
+                return
             }
         }
 
@@ -733,6 +741,9 @@ class NotificationCastListener : NotificationListenerService() {
         }
         log(sbn, "cast — $kind", true)
         GenericCard.post(applicationContext, sbn, isLive, category = "normal")
+        if (!isLive && !isOngoing && prefs.getBoolean("cast_hide_source_notification", true)) {
+            runCatching { cancelNotification(sbn.key) }
+        }
     }
 
     /** The user-visible name of [pkg], or the package name if it can't be resolved. */

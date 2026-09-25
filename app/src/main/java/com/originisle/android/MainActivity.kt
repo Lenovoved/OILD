@@ -11,9 +11,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,10 +47,8 @@ import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FormatPaint
-import androidx.compose.material.icons.filled.Highlight
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.TextFields
@@ -93,11 +95,9 @@ import com.originisle.android.ui.PREFS_NAME
 import com.originisle.android.ui.openAutoStartSettings
 import com.originisle.android.ui.rememberResumeTick
 import com.originisle.android.ui.samples.IslandSamples
-import com.originisle.android.ui.settings.BehaviorSettingsScreen
 import com.originisle.android.ui.settings.CategoriesSettingsScreen
 import com.originisle.android.ui.settings.ColorsThemeSettingsScreen
 import com.originisle.android.ui.settings.DurationSettingsScreen
-import com.originisle.android.ui.settings.LightEffectsSettingsScreen
 import com.originisle.android.ui.settings.PermissionsSettingsScreen
 import com.originisle.android.ui.settings.SurfacesSettingsScreen
 import com.originisle.android.ui.settings.TypographySettingsScreen
@@ -109,8 +109,6 @@ enum class SettingsSubScreen {
     CATEGORIES,
     DURATION,
     SURFACES,
-    BEHAVIOR,
-    LIGHT_EFFECTS,
     TYPOGRAPHY,
     COLORS_THEME,
     PERMISSIONS,
@@ -173,26 +171,70 @@ private fun OriginSpaceApp() {
         ) {
             AnimatedContent(
                 targetState = selectedBottomTab,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (slideInHorizontally(
+                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            initialOffsetX = { fullWidth -> fullWidth },
+                        ) + fadeIn(animationSpec = tween(300))).togetherWith(
+                            slideOutHorizontally(
+                                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                targetOffsetX = { fullWidth -> -fullWidth / 3 },
+                            ) + fadeOut(animationSpec = tween(200)),
+                        )
+                    } else {
+                        (slideInHorizontally(
+                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            initialOffsetX = { fullWidth -> -fullWidth },
+                        ) + fadeIn(animationSpec = tween(300))).togetherWith(
+                            slideOutHorizontally(
+                                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                targetOffsetX = { fullWidth -> fullWidth / 3 },
+                            ) + fadeOut(animationSpec = tween(200)),
+                        )
+                    }
+                },
                 label = "TabTransition",
             ) { tabIndex ->
                 if (tabIndex == 0) {
-                    if (activeSubScreen != null) {
-                        when (activeSubScreen) {
+                    AnimatedContent(
+                        targetState = activeSubScreen,
+                        transitionSpec = {
+                            if (targetState != null) {
+                                (slideInHorizontally(
+                                    animationSpec = tween(320, easing = FastOutSlowInEasing),
+                                    initialOffsetX = { fullWidth -> fullWidth },
+                                ) + fadeIn(animationSpec = tween(300))).togetherWith(
+                                    slideOutHorizontally(
+                                        animationSpec = tween(280, easing = FastOutSlowInEasing),
+                                        targetOffsetX = { fullWidth -> -fullWidth / 4 },
+                                    ) + fadeOut(animationSpec = tween(200)),
+                                )
+                            } else {
+                                (slideInHorizontally(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                    initialOffsetX = { fullWidth -> -fullWidth / 4 },
+                                ) + fadeIn(animationSpec = tween(300))).togetherWith(
+                                    slideOutHorizontally(
+                                        animationSpec = tween(320, easing = FastOutSlowInEasing),
+                                        targetOffsetX = { fullWidth -> fullWidth },
+                                    ) + fadeOut(animationSpec = tween(200)),
+                                )
+                            }
+                        },
+                        label = "SubScreenTransition",
+                    ) { subScreen ->
+                        when (subScreen) {
                             SettingsSubScreen.CATEGORIES -> CategoriesSettingsScreen(onBack = { activeSubScreen = null })
                             SettingsSubScreen.DURATION -> DurationSettingsScreen(onBack = { activeSubScreen = null })
                             SettingsSubScreen.SURFACES -> SurfacesSettingsScreen(onBack = { activeSubScreen = null })
-                            SettingsSubScreen.BEHAVIOR -> BehaviorSettingsScreen(onBack = { activeSubScreen = null })
-                            SettingsSubScreen.LIGHT_EFFECTS -> LightEffectsSettingsScreen(onBack = { activeSubScreen = null })
                             SettingsSubScreen.TYPOGRAPHY -> TypographySettingsScreen(onBack = { activeSubScreen = null })
                             SettingsSubScreen.COLORS_THEME -> ColorsThemeSettingsScreen(onBack = { activeSubScreen = null })
                             SettingsSubScreen.PERMISSIONS -> PermissionsSettingsScreen(onBack = { activeSubScreen = null })
-                            null -> Unit
+                            null -> OriginSpaceMainHub(
+                                onNavigateTo = { screen -> activeSubScreen = screen },
+                            )
                         }
-                    } else {
-                        OriginSpaceMainHub(
-                            onNavigateTo = { subScreen -> activeSubScreen = subScreen },
-                        )
                     }
                 } else {
                     WaveletEqualizerScreen()
@@ -399,38 +441,12 @@ private fun OriginSpaceMainHub(
 
                 HorizontalDivider(color = Color(0xFFF1F5F9))
 
-                // 4. Behavior
-                SettingsHubRow(
-                    icon = Icons.Default.OpenInFull,
-                    iconBg = Color(0xFFF59E0B),
-                    title = "Поведение и отклик",
-                    subtitle = "Принудительное раскрытие, не гасить экран, звук, клик",
-                    badge = "Реакция",
-                    badgeColor = Color(0xFFF59E0B),
-                    onClick = { onNavigateTo(SettingsSubScreen.BEHAVIOR) },
-                )
-
-                HorizontalDivider(color = Color(0xFFF1F5F9))
-
-                // 5. Light Effects
-                SettingsHubRow(
-                    icon = Icons.Default.Highlight,
-                    iconBg = Color(0xFFEC4899),
-                    title = "Световые эффекты",
-                    subtitle = "Боковая подсветка граней экрана, цвета, волны, SOS",
-                    badge = if (lightEnabled) "Вкл" else "Выкл",
-                    badgeColor = if (lightEnabled) Color(0xFFEC4899) else Color(0xFF94A3B8),
-                    onClick = { onNavigateTo(SettingsSubScreen.LIGHT_EFFECTS) },
-                )
-
-                HorizontalDivider(color = Color(0xFFF1F5F9))
-
-                // 6. Typography & Style
+                // 4. Typography & Style
                 SettingsHubRow(
                     icon = Icons.Default.FormatPaint,
                     iconBg = Color(0xFF10B981),
-                    title = "Стиль, шрифт и лимит символов",
-                    subtitle = "Шаблоны карточки, гарнитуры, размер текста и лимиты",
+                    title = "Стиль и лимиты символов",
+                    subtitle = "Шаблоны карточки, лимит символов в капсуле и теле сообщения",
                     badge = notifStyle.replaceFirstChar { it.uppercase() },
                     badgeColor = Color(0xFF10B981),
                     onClick = { onNavigateTo(SettingsSubScreen.TYPOGRAPHY) },
@@ -438,7 +454,7 @@ private fun OriginSpaceMainHub(
 
                 HorizontalDivider(color = Color(0xFFF1F5F9))
 
-                // 7. Colors & Theme
+                // 5. Colors & Theme
                 SettingsHubRow(
                     icon = Icons.Default.ColorLens,
                     iconBg = Color(0xFF6366F1),
@@ -451,7 +467,7 @@ private fun OriginSpaceMainHub(
 
                 HorizontalDivider(color = Color(0xFFF1F5F9))
 
-                // 8. App Filter
+                // 6. App Filter
                 SettingsHubRow(
                     icon = Icons.Default.FilterList,
                     iconBg = Color(0xFF64748B),
@@ -464,12 +480,12 @@ private fun OriginSpaceMainHub(
 
                 HorizontalDivider(color = Color(0xFFF1F5F9))
 
-                // 9. Permissions
+                // 7. Permissions
                 SettingsHubRow(
                     icon = Icons.Default.Security,
                     iconBg = Color(0xFF14B8A6),
                     title = "Системные разрешения",
-                    subtitle = "Доступ к уведомлениям, батарея, служба доступности",
+                    subtitle = "Доступ к уведомлениям, батарея, автозапуск",
                     badge = "Служба",
                     badgeColor = Color(0xFF14B8A6),
                     onClick = { onNavigateTo(SettingsSubScreen.PERMISSIONS) },

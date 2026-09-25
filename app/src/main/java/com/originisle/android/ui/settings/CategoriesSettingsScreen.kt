@@ -1,7 +1,6 @@
 package com.originisle.android.ui.settings
 
 import android.content.Context
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,12 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.SportsSoccer
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
@@ -62,11 +57,11 @@ fun CategoriesSettingsScreen(
     var ignoreSilent by remember {
         mutableStateOf(prefs.getBoolean("cast_ignore_silent", false))
     }
-    var showNotify by remember {
-        mutableStateOf(prefs.getBoolean("cast_show_notify", true))
+    var hideSourceNotification by remember {
+        mutableStateOf(prefs.getBoolean("cast_hide_source_notification", true))
     }
-    var islandNotify by remember {
-        mutableStateOf(prefs.getBoolean("cast_island_notify", false))
+    var hideOriginShade by remember {
+        mutableStateOf(prefs.getBoolean("cast_hide_origin_shade", true))
     }
 
     Column(
@@ -206,31 +201,34 @@ fun CategoriesSettingsScreen(
                 )
             }
 
-            // System Notification Shade Delivery
+            // Notification Shade Duplicate Hiding
             SettingsCard {
-                SettingsSectionHeader("Поведение в системной шторке", Icons.Default.Notifications)
+                SettingsSectionHeader("Скрытие дубликатов из шторки", Icons.Default.NotificationsOff)
 
                 SettingsToggleRow(
-                    title = "Отображение в обычной шторке уведомлений",
-                    subtitle = "Показывать карточку Origin Isle в раскрывающейся шторке Android наряду с островком",
-                    checked = showNotify,
+                    title = "Скрывать исходные уведомления",
+                    subtitle = "Автоматически удалять входящие сообщения и оповещения из обычной шторки Android после их отправки на Dynamic Island",
+                    checked = hideSourceNotification,
                     onCheckedChange = { checked ->
-                        showNotify = checked
-                        prefs.edit().putBoolean("cast_show_notify", checked).apply()
+                        hideSourceNotification = checked
+                        prefs.edit().putBoolean("cast_hide_source_notification", checked).apply()
                         NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
                     },
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
 
                 SettingsToggleRow(
-                    title = "Режим островного уведомления (IslandNotify)",
-                    subtitle = "Специальный системный флаг OriginOS для скрытия дубликата из шторки (как у родных виджетов vivo)",
-                    checked = islandNotify,
+                    title = "Скрывать дубликат Origin OS из шторки",
+                    subtitle = "Отключает показ системной копии карточки в раскрывающейся шторке (IslandNotify), отображая только Dynamic Island",
+                    checked = hideOriginShade,
                     onCheckedChange = { checked ->
-                        islandNotify = checked
-                        prefs.edit().putBoolean("cast_island_notify", checked).apply()
+                        hideOriginShade = checked
+                        prefs.edit()
+                            .putBoolean("cast_hide_origin_shade", checked)
+                            .putBoolean("cast_show_notify", !checked)
+                            .putBoolean("cast_island_notify", checked)
+                            .apply()
                         NotificationCastListener.instance?.reload()
                         NotificationCastListener.instance?.recastAll()
                     },
