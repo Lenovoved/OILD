@@ -8,6 +8,11 @@ echo "=========================================="
 # Ensure output directory exists
 mkdir -p build-outputs
 
+# Ensure debug keystore exists
+if [ ! -f "debug.keystore" ] && [ -f "debug.keystore.base64" ]; then
+    base64 -d debug.keystore.base64 > debug.keystore
+fi
+
 # Execute Gradle build
 if [ -x "$(command -v gradle)" ]; then
     gradle :app:assembleDebug
