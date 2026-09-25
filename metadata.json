@@ -1,0 +1,7 @@
+{
+  "name": "Пространство Origin",
+  "description": "Трансляция уведомлений и управление в Пространстве Origin (OriginOS)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
