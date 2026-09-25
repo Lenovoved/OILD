@@ -1,10 +1,8 @@
 package com.originisle.android.equalizer
 
 import android.content.Context
-import android.media.audiofx.PresetReverb
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,7 +43,10 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SpatialAudio
 import androidx.compose.material.icons.filled.SurroundSound
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,11 +60,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import com.originisle.android.ui.OriginOSSlider
-import com.originisle.android.ui.OriginOSSwitch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -89,12 +88,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.originisle.android.ui.OriginOSSlider
+import com.originisle.android.ui.OriginOSSwitch
 import kotlin.math.roundToInt
 
 /**
  * Modern, harmonious Wavelet-inspired Audio Equalizer Screen.
- * Beautifully matches the OriginOS design system with soft rounded cards,
- * interactive 10-band spline curve canvas, AutoEq headphone profiles,
+ * Beautifully matches the OriginOS design system and Wavelet 9-band EQ
+ * (62.5 Hz, 125 Hz, 250 Hz, 500 Hz, 1 kHz, 2 kHz, 4 kHz, 8 kHz, 16 kHz),
+ * interactive spline curve canvas, AutoEq headphone profiles,
  * and high-fidelity DSP sound enhancement controls.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,14 +117,17 @@ fun WaveletEqualizerScreen(
 
     val bandCount = WaveletAudioEngine.getBandCount(context)
     val bandLabels = WaveletAudioEngine.getBandLabels(context)
+    val bandFullLabels = WaveletAudioEngine.getBandFullLabels(context)
 
-    // Band gains (5 real working bands: 60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz)
+    // Band gains (9 bands: 62.5Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz)
     val bandGains = remember {
         mutableStateListOf<Float>().apply {
             addAll(WaveletAudioEngine.getBandGains(context))
             while (size < bandCount) add(0f)
         }
     }
+
+    var showVerticalEqDialog by remember { mutableStateOf(false) }
 
     // AutoEq
     var autoEqEnabled by remember { mutableStateOf(WaveletAudioEngine.getAutoEqEnabled(context)) }
@@ -195,7 +201,7 @@ fun WaveletEqualizerScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "5-полосный эквалайзер с реальными рабочими частотами (60 Гц – 14 кГц), калибровка наушников AutoEq и эффекты DSP.",
+            text = "9-полосный эквалайзер Wavelet (62,5 Гц – 16 кГц), калибровка наушников AutoEq и эффекты DSP.",
             fontSize = 13.5.sp,
             lineHeight = 19.sp,
             color = Color(0xFF5F6368),
@@ -281,7 +287,7 @@ fun WaveletEqualizerScreen(
             colors = CardDefaults.cardColors(containerColor = Color.White),
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
-                // Header with Reset button
+                // Header with Multi-slider Dialog and Reset button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -313,31 +319,44 @@ fun WaveletEqualizerScreen(
                                 color = Color(0xFF1A1C1E),
                             )
                             Text(
-                                text = "$bandCount полос: 60 Гц – 14 кГц (±12 дБ)",
+                                text = "9 полос: 62,5 Гц – 16 кГц (±12 дБ)",
                                 fontSize = 12.sp,
                                 color = Color(0xFF64748B),
                             )
                         }
                     }
 
-                    IconButton(
-                        onClick = {
-                            val flatGains = List(bandCount) { 0f }
-                            for (i in 0 until bandCount) {
-                                if (i < bandGains.size) bandGains[i] = 0f
-                            }
-                            selectedPreset = "Flat"
-                            WaveletAudioEngine.setAllBandGains(context, flatGains)
-                            WaveletAudioEngine.setSelectedPreset(context, "Flat")
-                            Toast.makeText(context, "Эквалайзер сброшен в Flat", Toast.LENGTH_SHORT).show()
-                        },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Сброс",
-                            tint = Color(0xFF64748B),
-                            modifier = Modifier.size(20.dp),
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { showVerticalEqDialog = true },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ViewColumn,
+                                contentDescription = "Wavelet микшер",
+                                tint = Color(0xFF1677FF),
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                val flatGains = List(bandCount) { 0f }
+                                for (i in 0 until bandCount) {
+                                    if (i < bandGains.size) bandGains[i] = 0f
+                                }
+                                selectedPreset = "Flat"
+                                WaveletAudioEngine.setAllBandGains(context, flatGains)
+                                WaveletAudioEngine.setSelectedPreset(context, "Flat")
+                                Toast.makeText(context, "Эквалайзер сброшен в Flat", Toast.LENGTH_SHORT).show()
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Сброс",
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 }
 
@@ -396,19 +415,28 @@ fun WaveletEqualizerScreen(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                Text(
-                    text = "Частотные полосы (дБ):",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF334155),
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "Частотные полосы (дБ):",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF334155),
+                    )
+                    TextButton(onClick = { showVerticalEqDialog = true }) {
+                        Text("Открыть микшер", fontSize = 12.5.sp, color = Color(0xFF1677FF), fontWeight = FontWeight.Bold)
+                    }
+                }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Working Band Gain Sliders
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (i in 0 until bandCount) {
-                        val freqLabel = bandLabels.getOrElse(i) { "${i + 1}" }
+                        val freqLabel = bandFullLabels.getOrElse(i) { "${i + 1}" }
                         val currentGain = bandGains.getOrElse(i) { 0f }
 
                         Row(
@@ -603,13 +631,13 @@ fun WaveletEqualizerScreen(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF2563EB).copy(alpha = 0.10f)),
+                                .background(Color(0xFF059669).copy(alpha = 0.10f)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Waves,
                                 contentDescription = "Bass Boost",
-                                tint = Color(0xFF2563EB),
+                                tint = Color(0xFF059669),
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -621,7 +649,7 @@ fun WaveletEqualizerScreen(
                                 color = Color(0xFF1A1C1E),
                             )
                             Text(
-                                text = "Глубокие суб-басы и динамический панч",
+                                text = "Глубокий суббас без клиппинга",
                                 fontSize = 12.sp,
                                 color = Color(0xFF64748B),
                             )
@@ -638,46 +666,39 @@ fun WaveletEqualizerScreen(
                     )
                 }
 
-                AnimatedVisibility(
-                    visible = bassBoostEnabled,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically(),
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            OriginOSSlider(
-                                value = bassBoostStrength,
-                                onValueChange = {
-                                    bassBoostStrength = it
-                                    WaveletAudioEngine.setBassBoostStrength(context, it)
-                                },
-                                valueRange = 0f..100f,
-                                modifier = Modifier.weight(1f),
-                                activeColor = Color(0xFF0066FF),
-                                inactiveColor = Color(0xFFE2E8F0),
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = "${bassBoostStrength.toInt()}%",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1677FF),
-                                modifier = Modifier.width(44.dp),
-                                textAlign = TextAlign.End,
-                            )
-                        }
-                    }
+                    OriginOSSlider(
+                        value = bassBoostStrength,
+                        onValueChange = { newVal ->
+                            bassBoostStrength = newVal
+                            WaveletAudioEngine.setBassBoostStrength(context, newVal)
+                        },
+                        valueRange = 0f..100f,
+                        modifier = Modifier.weight(1f),
+                        activeColor = Color(0xFF059669),
+                        inactiveColor = Color(0xFFE2E8F0),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "${bassBoostStrength.roundToInt()}%",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF059669),
+                        modifier = Modifier.width(42.dp),
+                        textAlign = TextAlign.End,
+                    )
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 5. Virtualizer / 3D Spatial Audio Card
+        // 5. Virtualizer (Spatial Audio) Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -685,7 +706,7 @@ fun WaveletEqualizerScreen(
             shape = RoundedCornerShape(26.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
         ) {
-            Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -704,7 +725,7 @@ fun WaveletEqualizerScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                imageVector = Icons.Default.SurroundSound,
+                                imageVector = Icons.Default.SpatialAudio,
                                 contentDescription = "Virtualizer",
                                 tint = Color(0xFF7C3AED),
                                 modifier = Modifier.size(20.dp),
@@ -712,13 +733,13 @@ fun WaveletEqualizerScreen(
                         }
                         Column {
                             Text(
-                                text = "Виртуализатор (3D Звук)",
+                                text = "Пространственный звук",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF1A1C1E),
                             )
                             Text(
-                                text = "Расширение стереопанорамы и эффект сцены",
+                                text = "3D-виртуализация звуковой сцены",
                                 fontSize = 12.sp,
                                 color = Color(0xFF64748B),
                             )
@@ -735,243 +756,140 @@ fun WaveletEqualizerScreen(
                     )
                 }
 
-                AnimatedVisibility(
-                    visible = virtualizerEnabled,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            OriginOSSlider(
-                                value = virtualizerStrength,
-                                onValueChange = {
-                                    virtualizerStrength = it
-                                    WaveletAudioEngine.setVirtualizerStrength(context, it)
-                                },
-                                valueRange = 0f..100f,
-                                modifier = Modifier.weight(1f),
-                                activeColor = Color(0xFF7C3AED),
-                                inactiveColor = Color(0xFFE2E8F0),
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = "${virtualizerStrength.toInt()}%",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF7C3AED),
-                                modifier = Modifier.width(44.dp),
-                                textAlign = TextAlign.End,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 6. Reverberation Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(elevation = 2.dp, shape = RoundedCornerShape(26.dp), spotColor = Color(0x10000000)),
-            shape = RoundedCornerShape(26.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFD97706).copy(alpha = 0.10f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.SpatialAudio,
-                                contentDescription = "Reverberation",
-                                tint = Color(0xFFD97706),
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "Реверберация (Акустика зала)",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1A1C1E),
-                            )
-                            Text(
-                                text = "Имитация акустического пространства",
-                                fontSize = 12.sp,
-                                color = Color(0xFF64748B),
-                            )
-                        }
-                    }
-
-                    OriginOSSwitch(
-                        checked = reverbEnabled && masterEnabled,
-                        onCheckedChange = { checked ->
-                            if (!masterEnabled) return@OriginOSSwitch
-                            reverbEnabled = checked
-                            WaveletAudioEngine.setReverbEnabled(context, checked)
-                        },
-                    )
-                }
-
-                AnimatedVisibility(
-                    visible = reverbEnabled,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        val reverbOptions = listOf(
-                            "Малая комната" to PresetReverb.PRESET_SMALLROOM.toInt(),
-                            "Средняя комната" to PresetReverb.PRESET_MEDIUMROOM.toInt(),
-                            "Большой зал" to PresetReverb.PRESET_LARGEHALL.toInt(),
-                            "Концертная сцена" to PresetReverb.PRESET_LARGEROOM.toInt(),
-                            "Пластина" to PresetReverb.PRESET_PLATE.toInt(),
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            reverbOptions.forEach { (name, id) ->
-                                val isSelected = reverbPreset == id
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        reverbPreset = id
-                                        WaveletAudioEngine.setReverbPreset(context, id)
-                                    },
-                                    label = { Text(name, fontSize = 12.sp) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Color(0xFFD97706),
-                                        selectedLabelColor = Color.White,
-                                        containerColor = Color(0xFFF1F5F9),
-                                        labelColor = Color(0xFF334155),
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = null,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 7. Preamp & Limiter Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(elevation = 2.dp, shape = RoundedCornerShape(26.dp), spotColor = Color(0x10000000)),
-            shape = RoundedCornerShape(26.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF059669).copy(alpha = 0.10f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Tune,
-                                contentDescription = "Limiter & Preamp",
-                                tint = Color(0xFF059669),
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "Предусиление и Лимитер",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1A1C1E),
-                            )
-                            Text(
-                                text = "Защита от перегрузки и клиппинга звука",
-                                fontSize = 12.sp,
-                                color = Color(0xFF64748B),
-                            )
-                        }
-                    }
-
-                    OriginOSSwitch(
-                        checked = limiterEnabled && masterEnabled,
-                        onCheckedChange = { checked ->
-                            if (!masterEnabled) return@OriginOSSwitch
-                            limiterEnabled = checked
-                            WaveletAudioEngine.setLimiterEnabled(context, checked)
-                        },
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "Preamp:",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF475569),
-                        modifier = Modifier.width(62.dp),
-                    )
                     OriginOSSlider(
-                        value = preampGain,
-                        onValueChange = {
-                            val rounded = (it * 2).roundToInt() / 2.0f
-                            preampGain = rounded
-                            WaveletAudioEngine.setPreampGain(context, rounded)
+                        value = virtualizerStrength,
+                        onValueChange = { newVal ->
+                            virtualizerStrength = newVal
+                            WaveletAudioEngine.setVirtualizerStrength(context, newVal)
                         },
-                        valueRange = -12f..12f,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 4.dp),
-                        activeColor = Color(0xFF059669),
+                        valueRange = 0f..100f,
+                        modifier = Modifier.weight(1f),
+                        activeColor = Color(0xFF7C3AED),
                         inactiveColor = Color(0xFFE2E8F0),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "${virtualizerStrength.roundToInt()}%",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF7C3AED),
+                        modifier = Modifier.width(42.dp),
+                        textAlign = TextAlign.End,
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 6. Preamp & Limiter Gain Card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(elevation = 2.dp, shape = RoundedCornerShape(26.dp), spotColor = Color(0x10000000)),
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFEA580C).copy(alpha = 0.10f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SurroundSound,
+                                contentDescription = "Preamp",
+                                tint = Color(0xFFEA580C),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Предусилитель (Preamp Gain)",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1A1C1E),
+                            )
+                            Text(
+                                text = "Общая компенсация громкости (±12 дБ)",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B),
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OriginOSSlider(
+                        value = preampGain,
+                        onValueChange = { newVal ->
+                            preampGain = newVal
+                            WaveletAudioEngine.setPreampGain(context, newVal)
+                        },
+                        valueRange = -12f..12f,
+                        modifier = Modifier.weight(1f),
+                        activeColor = Color(0xFFEA580C),
+                        inactiveColor = Color(0xFFE2E8F0),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = String.format("%+.1f дБ", preampGain),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF059669),
+                        color = Color(0xFFEA580C),
                         modifier = Modifier.width(62.dp),
                         textAlign = TextAlign.End,
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFF1F5F9))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Лимитер / Защита от перегрузки",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF1E293B),
+                        )
+                        Text(
+                            text = "Предотвращает искажения и хрипы при высоком уровне усиления",
+                            fontSize = 12.sp,
+                            color = Color(0xFF64748B),
+                        )
+                    }
+                    OriginOSSwitch(
+                        checked = limiterEnabled,
+                        onCheckedChange = { checked ->
+                            limiterEnabled = checked
+                            WaveletAudioEngine.setLimiterEnabled(context, checked)
+                        },
                     )
                 }
             }
@@ -979,6 +897,24 @@ fun WaveletEqualizerScreen(
 
         // Padding for the bottom navigation pill dock
         Spacer(modifier = Modifier.height(110.dp))
+    }
+
+    // Wavelet 9-Band Vertical Slider Modal Dialog (Matching Reference Screenshot)
+    if (showVerticalEqDialog) {
+        WaveletVerticalEqualizerDialog(
+            bandLabels = bandLabels,
+            currentGains = bandGains,
+            onApply = { newGains ->
+                newGains.forEachIndexed { i, g ->
+                    if (i < bandGains.size) bandGains[i] = g
+                }
+                selectedPreset = "Пользовательский"
+                WaveletAudioEngine.setAllBandGains(context, newGains)
+                WaveletAudioEngine.setSelectedPreset(context, "Пользовательский")
+                showVerticalEqDialog = false
+            },
+            onDismiss = { showVerticalEqDialog = false },
+        )
     }
 
     // AutoEq Headphone Profile Selection Modal Bottom Sheet
@@ -1108,8 +1044,210 @@ fun WaveletEqualizerScreen(
 }
 
 /**
+ * 9-Band Wavelet Vertical Slider Popup Dialog matching the user's uploaded reference screenshot:
+ * "Перезаписать" modal dialog with 9 vertical frequency faders:
+ * [62,5, 125, 250, 500, 1k, 2k, 4k, 8k, 16k], value labels above, and Отмена / OK actions.
+ */
+@Composable
+private fun WaveletVerticalEqualizerDialog(
+    bandLabels: List<String>,
+    currentGains: List<Float>,
+    onApply: (List<Float>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val tempGains = remember {
+        mutableStateListOf<Float>().apply {
+            addAll(currentGains)
+            while (size < bandLabels.size) add(0f)
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(28.dp)),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF2F6)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+            ) {
+                Text(
+                    text = "Перезаписать",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B),
+                    modifier = Modifier.padding(start = 4.dp, bottom = 12.dp),
+                )
+
+                // 9 Vertical Sliders Container
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(290.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    for (i in 0 until bandLabels.size) {
+                        val label = bandLabels[i]
+                        val gain = tempGains.getOrElse(i) { 0f }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            // Top numerical gain value
+                            Text(
+                                text = String.format("%.1f", gain),
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF334155),
+                                maxLines = 1,
+                            )
+
+                            // Vertical Slider
+                            VerticalGainFader(
+                                value = gain,
+                                onValueChange = { newVal ->
+                                    tempGains[i] = (newVal * 2).roundToInt() / 2.0f
+                                },
+                                valueRange = -12f..12f,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(vertical = 4.dp),
+                            )
+
+                            // Bottom Frequency Label (62,5, 125, 250, 500, 1k, 2k, 4k, 8k, 16k)
+                            Text(
+                                text = label,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF475569),
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Action buttons: Отмена & OK
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text(
+                            text = "Отмена",
+                            color = Color(0xFF475569),
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TextButton(
+                        onClick = { onApply(tempGains.toList()) },
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text(
+                            text = "OK",
+                            color = Color(0xFF1677FF),
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Custom smooth vertical slider / fader component for the Wavelet 9-band EQ modal.
+ */
+@Composable
+private fun VerticalGainFader(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(
+        modifier = modifier
+            .width(26.dp)
+            .pointerInput(valueRange) {
+                detectDragGestures { change, _ ->
+                    change.consume()
+                    val height = size.height.toFloat()
+                    val padding = 12.dp.toPx()
+                    val trackHeight = height - (padding * 2)
+                    if (trackHeight > 0) {
+                        val touchY = change.position.y
+                        val fraction = 1f - ((touchY - padding) / trackHeight).coerceIn(0f, 1f)
+                        val rangeSpan = valueRange.endInclusive - valueRange.start
+                        val calculated = valueRange.start + fraction * rangeSpan
+                        onValueChange(calculated)
+                    }
+                }
+            },
+    ) {
+        val width = size.width
+        val height = size.height
+        val padding = 12.dp.toPx()
+        val trackHeight = height - (padding * 2)
+        val centerX = width / 2
+
+        val fraction = ((value - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f)
+        val thumbY = (height - padding) - (fraction * trackHeight)
+
+        // Draw track
+        drawLine(
+            color = Color(0xFF475569).copy(alpha = 0.5f),
+            start = Offset(centerX, padding),
+            end = Offset(centerX, height - padding),
+            strokeWidth = 3.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
+
+        // Draw zero tick dot at 0dB (midpoint)
+        val zeroFraction = ((0f - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f)
+        val zeroY = (height - padding) - (zeroFraction * trackHeight)
+        drawCircle(
+            color = Color(0xFF334155),
+            radius = 2.dp.toPx(),
+            center = Offset(centerX, zeroY),
+        )
+
+        // Draw knob / thumb
+        drawCircle(
+            color = Color(0xFF4361EE),
+            radius = 8.dp.toPx(),
+            center = Offset(centerX, thumbY),
+        )
+        drawCircle(
+            color = Color(0xFF2B3A8C),
+            radius = 8.dp.toPx(),
+            center = Offset(centerX, thumbY),
+            style = Stroke(width = 1.5.dp.toPx()),
+        )
+    }
+}
+
+/**
  * Draws an interactive, harmonious Cubic Bezier Spline frequency curve on Canvas
- * representing the 10-band equalizer gains with smooth dragging support and clear dB/frequency axes.
+ * representing the 9-band equalizer gains with smooth dragging support and clear dB/frequency axes.
  */
 @Composable
 private fun OriginEqualizerCurveCanvas(
@@ -1123,7 +1261,7 @@ private fun OriginEqualizerCurveCanvas(
                 change.consume()
                 val width = size.width.toFloat()
                 val height = size.height.toFloat()
-                val paddingHorizontal = 24.dp.toPx()
+                val paddingHorizontal = 20.dp.toPx()
                 val paddingVertical = 16.dp.toPx()
                 val drawWidth = width - (paddingHorizontal * 2)
                 val drawHeight = height - (paddingVertical * 2)
@@ -1145,9 +1283,8 @@ private fun OriginEqualizerCurveCanvas(
     ) {
         val width = size.width
         val height = size.height
-        val paddingHorizontal = 24.dp.toPx()
+        val paddingHorizontal = 20.dp.toPx()
         val paddingVertical = 16.dp.toPx()
-
         val drawWidth = width - (paddingHorizontal * 2)
         val drawHeight = height - (paddingVertical * 2)
         val midY = paddingVertical + (drawHeight / 2)
@@ -1227,12 +1364,12 @@ private fun OriginEqualizerCurveCanvas(
         points.forEach { pt ->
             drawCircle(
                 color = Color.White,
-                radius = 5.dp.toPx(),
+                radius = 4.5.dp.toPx(),
                 center = pt,
             )
             drawCircle(
                 color = Color(0xFF1677FF),
-                radius = 3.5.dp.toPx(),
+                radius = 3.dp.toPx(),
                 center = pt,
             )
         }

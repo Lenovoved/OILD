@@ -146,7 +146,6 @@ class MainActivity : ComponentActivity() {
             prefs.getBoolean("cast_notifications", false)
 
         if (hasAnyCasting) {
-            PlaygroundService.keepAlive(this)
             NotificationCastListener.forceRebind(this)
         }
     }
@@ -300,7 +299,6 @@ private fun OriginSpaceMainHub(
             }
         }
         if (activeCategoriesCount > 0) {
-            PlaygroundService.keepAlive(context)
             NotificationCastListener.forceRebind(context)
         }
     }

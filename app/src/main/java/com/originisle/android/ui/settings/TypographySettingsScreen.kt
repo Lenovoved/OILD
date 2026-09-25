@@ -95,6 +95,7 @@ fun TypographySettingsScreen(
                 SettingsChipsRow(
                     items = listOf(
                         "classic" to "Классический",
+                        "app_name_only" to "Только название приложения",
                         "compact" to "Компактный",
                         "expanded" to "Расширенный",
                         "minimal" to "Минималистичный",
@@ -221,11 +222,16 @@ fun TypographySettingsScreen(
             SettingsCard {
                 SettingsSectionHeader("Предварительный просмотр", Icons.Default.FormatPaint)
 
-                val sampleTitle = "Telegram • Александр Смирнов"
+                val sampleAppLabel = "Telegram"
+                val sampleTitle = if (notifStyle == "app_name_only") sampleAppLabel else "Telegram • Александр Смирнов"
                 val sampleBody = "Привет! Встречаемся сегодня в 18:30 в кофейне у парка? Я уже заказал столик на летней террасе и жду подтверждения."
                 val timeString = if (showTimestamp) SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) else "18:30"
 
-                val capsuleTitle = if (sampleTitle.length > capsuleChars) sampleTitle.take(capsuleChars) + "…" else sampleTitle
+                val capsuleTitle = when {
+                    notifStyle == "app_name_only" -> sampleAppLabel
+                    sampleTitle.length > capsuleChars -> sampleTitle.take(capsuleChars) + "…"
+                    else -> sampleTitle
+                }
                 val chip = if (timeString.length > capsuleChars) timeString.take(capsuleChars) + "…" else timeString
                 val body = if (sampleBody.length > bodyChars) sampleBody.take(bodyChars) + "…" else sampleBody
 

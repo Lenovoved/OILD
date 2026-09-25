@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.originisle.android.island.PlaygroundService
 import com.originisle.android.service.NotificationCastListener
 import com.originisle.android.ui.PREFS_NAME
 
@@ -95,7 +94,6 @@ fun CategoriesSettingsScreen(
                             .apply()
                         NotificationCastListener.onCategorySettingsChanged(context, "normal", checked)
                         if (checked) {
-                            PlaygroundService.keepAlive(context)
                             NotificationCastListener.forceRebind(context)
                             NotificationCastListener.instance?.recastAll()
                         }
@@ -113,7 +111,6 @@ fun CategoriesSettingsScreen(
                         prefs.edit().putBoolean("cast_messenger_notifications", checked).apply()
                         NotificationCastListener.onCategorySettingsChanged(context, "messenger", checked)
                         if (checked) {
-                            PlaygroundService.keepAlive(context)
                             NotificationCastListener.forceRebind(context)
                             NotificationCastListener.instance?.recastAll()
                         }
@@ -131,7 +128,6 @@ fun CategoriesSettingsScreen(
                         prefs.edit().putBoolean("cast_nav_notifications", checked).apply()
                         NotificationCastListener.onCategorySettingsChanged(context, "navigation", checked)
                         if (checked) {
-                            PlaygroundService.keepAlive(context)
                             NotificationCastListener.forceRebind(context)
                             NotificationCastListener.instance?.recastAll()
                         }
@@ -149,7 +145,6 @@ fun CategoriesSettingsScreen(
                         prefs.edit().putBoolean("cast_media_sessions", checked).apply()
                         NotificationCastListener.onMediaSettingsChanged(context, checked)
                         if (checked) {
-                            PlaygroundService.keepAlive(context)
                             NotificationCastListener.forceRebind(context)
                             NotificationCastListener.instance?.recastAll()
                         }

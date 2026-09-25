@@ -46,7 +46,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.originisle.android.ui.isAccessibilityEnabled
 import com.originisle.android.ui.isBatteryUnrestricted
 import com.originisle.android.ui.isListenerEnabled
 import com.originisle.android.ui.openAutoStartSettings
@@ -63,12 +62,10 @@ fun PermissionsSettingsScreen(
 
     var listenerGranted by remember { mutableStateOf(isListenerEnabled(context)) }
     var batteryGranted by remember { mutableStateOf(isBatteryUnrestricted(context)) }
-    var accessibilityGranted by remember { mutableStateOf(isAccessibilityEnabled(context)) }
 
     LaunchedEffect(tick.intValue) {
         listenerGranted = isListenerEnabled(context)
         batteryGranted = isBatteryUnrestricted(context)
-        accessibilityGranted = isAccessibilityEnabled(context)
     }
 
     Column(
@@ -115,17 +112,6 @@ fun PermissionsSettingsScreen(
                     isGranted = batteryGranted,
                     onAction = {
                         requestIgnoreBattery(context)
-                    },
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFF1F5F9))
-
-                PermissionItemRow(
-                    title = "Служба поддержания работы (Keep-Alive)",
-                    subtitle = "Специальная служба специальных возможностей для авто-перезапуска",
-                    isGranted = accessibilityGranted,
-                    onAction = {
-                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     },
                 )
             }

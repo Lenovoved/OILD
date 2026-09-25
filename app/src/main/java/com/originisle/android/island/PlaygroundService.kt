@@ -35,19 +35,7 @@ class PlaygroundService : Service() {
         const val ACTION_STOP = "ACTION_STOP"
         const val ACTION_CANCEL = "ACTION_CANCEL"
         const val ACTION_CANCEL_PACKAGE = "ACTION_CANCEL_PACKAGE"
-        // Just brings the foreground service up (no card) so the process — and the notification
-        // listener living in it — stays alive for background casts.
-        const val ACTION_KEEPALIVE = "ACTION_KEEPALIVE"
-
-        /** Start/keep the foreground service alive. Safe to call from a foreground context. */
-        fun keepAlive(context: Context) {
-            context.startService(Intent(context, PlaygroundService::class.java).setAction(ACTION_KEEPALIVE))
-        }
-
-        // Keep-alive channel created at IMPORTANCE_NONE (blocked): a foreground service on a blocked
-        // channel keeps running but its notification is SUPPRESSED — no status-bar icon, even on
-        // OriginOS which force-badges IMPORTANCE_MIN foreground services.
-        const val CHANNEL_ID = "originisle_keepalive"
+        const val CHANNEL_ID = "originisle_service"
 
         /** Ids of cards currently on the island — used to detect a crowded island. */
         @Volatile
@@ -55,9 +43,6 @@ class PlaygroundService : Service() {
 
         const val ORIGIN_CHANNEL_ID = "originisle_island_hi"
         const val FGS_ID = 9999
-
-        /** PendingIntent request code for the [onTaskRemoved] restart alarm. */
-        private const val RESTART_REQUEST = 7001
 
         /** Category of active cards: "normal", "messenger", "navigation", "media" */
         val cardCategoryMap = ConcurrentHashMap<Int, String>()
@@ -88,11 +73,7 @@ class PlaygroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // A null intent is a START_STICKY relaunch and ACTION_KEEPALIVE is the alarm/UI anchor
-        // request: both only mean "stay up", which is pointless once casting is off. Explicit card
-        // actions still work with it off, so the sample buttons are unaffected.
-        if ((intent == null || intent.action == ACTION_KEEPALIVE) && !isCastingEnabled()) {
-            cancelRestartAlarm()
+        if (intent == null && !isCastingEnabled()) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -103,36 +84,17 @@ class PlaygroundService : Service() {
                 ACTION_CANCEL -> cancelNotification(intent)
                 ACTION_CANCEL_PACKAGE -> cancelPackageCards(intent)
                 ACTION_STOP -> stopEverything()
-                ACTION_KEEPALIVE -> Unit // ensureForeground() above is all that's needed
             }
         } catch (e: Throwable) {
             Log.e("PlaygroundService", "onStartCommand failed", e)
         }
-        // STICKY so the system relaunches the service (and our process + listener) if it's killed.
         return START_STICKY
     }
 
-    /**
-     * START_STICKY alone didn't bring the service back on OriginOS, so also leave an alarm behind
-     * that restarts it a second later. The alarm survives because a swipe is a plain process kill,
-     * not a force-stop (which would cancel it, and which nothing can escape).
-     */
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        // With casting off there is nothing to come back for, and arming the alarm would revive the
-        // service a second after the user swiped it away — for good, since nothing else stops it.
         if (!isCastingEnabled()) {
-            cancelRestartAlarm()
             stopSelf()
-            return
-        }
-        runCatching { ensureForeground() }
-        runCatching {
-            restartAlarmIntent(PendingIntent.FLAG_UPDATE_CURRENT)?.let { restart ->
-                getSystemService(AlarmManager::class.java)?.set(
-                    AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000L, restart,
-                )
-            }
         }
     }
 
@@ -143,23 +105,6 @@ class PlaygroundService : Service() {
         it.getBoolean("cast_messenger_notifications", false) ||
         it.getBoolean("cast_nav_notifications", false) ||
         it.getBoolean("cast_notifications", false)
-    }
-
-    /** [flags] picks between arming (FLAG_UPDATE_CURRENT) and looking one up (FLAG_NO_CREATE). */
-    private fun restartAlarmIntent(flags: Int): PendingIntent? = PendingIntent.getForegroundService(
-        this,
-        RESTART_REQUEST,
-        Intent(this, PlaygroundService::class.java).setAction(ACTION_KEEPALIVE),
-        flags or PendingIntent.FLAG_IMMUTABLE,
-    )
-
-    private fun cancelRestartAlarm() {
-        runCatching {
-            restartAlarmIntent(PendingIntent.FLAG_NO_CREATE)?.let {
-                getSystemService(AlarmManager::class.java)?.cancel(it)
-                it.cancel()
-            }
-        }
     }
 
     private fun ensureForeground() {
@@ -540,8 +485,6 @@ class PlaygroundService : Service() {
     }
 
     private fun stopEverything() {
-        // An explicit stop must not be undone by an alarm a previous swipe left armed.
-        cancelRestartAlarm()
         cardPackageMap.clear()
         autoDismissTasks.values.forEach { mainHandler.removeCallbacks(it) }
         autoDismissTasks.clear()

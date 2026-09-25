@@ -12,8 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material.icons.filled.InvertColors
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,27 +36,12 @@ fun ColorsThemeSettingsScreen(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
 
-    var disableInvert by remember {
-        mutableStateOf(prefs.getBoolean("cast_disable_invert", true))
-    }
-    var cardBgColor by remember {
-        mutableIntStateOf(prefs.getInt("cast_card_bg_color", 0))
-    }
     var capsuleBgColor by remember {
         mutableIntStateOf(prefs.getInt("cast_capsule_bg_color", 0))
     }
     var rightTemplateOverride by remember {
         mutableStateOf(prefs.getString("cast_right_template", "auto") ?: "auto")
     }
-
-    val cardColors = listOf(
-        0 to "Origin Dark",
-        android.graphics.Color.parseColor("#0F172A") to "Глубокий синий",
-        android.graphics.Color.parseColor("#18181B") to "Графит",
-        android.graphics.Color.parseColor("#000000") to "OLED Black",
-        android.graphics.Color.parseColor("#064E3B") to "Изумруд",
-        android.graphics.Color.parseColor("#4C0519") to "Бордо",
-    )
 
     val capsuleColors = listOf(
         0 to "По умолчанию",
@@ -76,7 +59,7 @@ fun ColorsThemeSettingsScreen(
     ) {
         SettingsTopBar(
             title = "Цветовая палитра и темы",
-            subtitle = "Настройка цветовых слоев, инверсии и шаблонов капсулы",
+            subtitle = "Настройка акцентных цветов и шаблонов капсулы",
             onBack = onBack,
         )
 
@@ -84,47 +67,6 @@ fun ColorsThemeSettingsScreen(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Theme Inversion
-            SettingsCard {
-                SettingsSectionHeader("Инверсия цвета темы", Icons.Default.InvertColors)
-
-                SettingsToggleRow(
-                    title = "Запрет авто-инверсии (disableInvertColor)",
-                    subtitle = "Запрещает системе OriginOS автоматически инвертировать цвета карточки при переключении между светлой и темной темой, сохраняя контрастный фирменный вид",
-                    checked = disableInvert,
-                    onCheckedChange = { checked ->
-                        disableInvert = checked
-                        prefs.edit().putBoolean("cast_disable_invert", checked).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
-                    },
-                )
-            }
-
-            // Card Background Color
-            SettingsCard {
-                SettingsSectionHeader("Цвет фона большой карточки", Icons.Default.Palette)
-
-                Text(
-                    text = "Задает системную заливку фона развернутого островка (параметр `cardBgColor`).",
-                    fontSize = 12.5.sp,
-                    color = Color(0xFF64748B),
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                SettingsColorPalette(
-                    colors = cardColors,
-                    selectedColor = cardBgColor,
-                    onColorSelect = { c ->
-                        cardBgColor = c
-                        prefs.edit().putInt("cast_card_bg_color", c).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
-                    },
-                )
-            }
-
             // Capsule Chip Background Color
             SettingsCard {
                 SettingsSectionHeader("Цвет правой капсулы (Chip)", Icons.Default.ColorLens)

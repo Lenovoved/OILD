@@ -505,9 +505,6 @@ class NotificationCastListener : NotificationListenerService() {
         super.onListenerConnected()
         instance = this
         connectedAt = System.currentTimeMillis()
-        if (getSharedPreferences(PREFS, 0).getBoolean("cast_notifications", false)) {
-            runCatching { PlaygroundService.keepAlive(this) }
-        }
         reload()
         pollHandler.post(pollRunnable)
     }

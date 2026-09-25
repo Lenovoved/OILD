@@ -15,7 +15,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.originisle.android.service.KeepAliveAccessibilityService
 
 /** Shared permission/status checks used by both [OnboardingScreen] and the Cast tab. */
 
@@ -42,14 +41,6 @@ fun rememberResumeTick(): MutableIntState {
 fun isListenerEnabled(context: Context): Boolean =
     NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
 
-fun isAccessibilityEnabled(context: Context): Boolean {
-    val flat = Settings.Secure.getString(
-        context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-    ).orEmpty()
-    val target = android.content.ComponentName(context, KeepAliveAccessibilityService::class.java)
-    return flat.split(':').any { android.content.ComponentName.unflattenFromString(it) == target }
-}
-
 fun isBatteryUnrestricted(context: Context): Boolean {
     val pm = context.getSystemService(PowerManager::class.java)
     return pm?.isIgnoringBatteryOptimizations(context.packageName) == true
@@ -57,16 +48,6 @@ fun isBatteryUnrestricted(context: Context): Boolean {
 
 fun listenerStatusText(context: Context): String =
     if (isListenerEnabled(context)) "Доступ к уведомлениям: предоставлен ✓" else "Доступ к уведомлениям: НЕ предоставлен"
-
-// Not about the status-bar icon any more: the foreground service now always starts (its icon is
-// hidden by the IMPORTANCE_NONE channel instead), so what this service still buys is the rebind it
-// fires from onServiceConnected whenever OriginOS restarts the process.
-fun accessibilityStatusText(context: Context): String =
-    if (isAccessibilityEnabled(context)) {
-        "Служба поддержания работы: активна ✓"
-    } else {
-        "Служба поддержания работы: отключена"
-    }
 
 fun batteryStatusText(context: Context): String =
     if (isBatteryUnrestricted(context)) "Батарея: без ограничений ✓" else "Батарея: ограничена (нажмите для настройки)"

@@ -10,124 +10,91 @@ import android.util.Log
 
 /**
  * Open-source Wavelet-inspired Audio Engine for Android.
- * Reworked to target real, hardware-supported audio frequencies
- * (standard Android 5-band AudioFX architecture: 60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz).
+ * Features 9 standard ISO octave frequency bands matching Wavelet:
+ * [62.5 Hz, 125 Hz, 250 Hz, 500 Hz, 1 kHz, 2 kHz, 4 kHz, 8 kHz, 16 kHz] (range -12.0 to +12.0 dB).
+ * Smoothly interpolates and applies corrections to the underlying Android hardware Equalizer HAL.
  */
 object WaveletAudioEngine {
     private const val TAG = "WaveletAudioEngine"
     private const val PREFS_NAME = "wavelet_eq_prefs"
 
-    // Real working frequencies supported by standard Android Equalizer HAL (in Hz)
-    val DEFAULT_WORKING_FREQUENCIES = listOf(60, 230, 910, 3600, 14000)
-    val DEFAULT_WORKING_LABELS = listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz")
-
-    @Volatile
-    private var detectedFrequencies: List<Int> = DEFAULT_WORKING_FREQUENCIES
-    @Volatile
-    private var detectedLabels: List<String> = DEFAULT_WORKING_LABELS
+    // 9 Wavelet ISO Octave Center Frequencies (in Hz) matching user's reference screenshot
+    val WAVELET_FREQUENCIES = listOf(62.5f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f)
+    val WAVELET_LABELS = listOf("62,5", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+    val WAVELET_FULL_LABELS = listOf("62,5 Гц", "125 Гц", "250 Гц", "500 Гц", "1 кГц", "2 кГц", "4 кГц", "8 кГц", "16 кГц")
 
     data class EqPreset(
         val name: String,
-        val gains: List<Float>, // 5-band gains in dB (-12.0 to +12.0)
+        val gains: List<Float>, // 9-band gains in dB (-12.0 to +12.0)
     )
 
     data class AutoEqProfile(
         val model: String,
         val manufacturer: String,
         val type: String, // In-Ear, Over-Ear, Earbuds
-        val gains: List<Float>, // 5-band compensation gains in dB
+        val gains: List<Float>, // 9-band compensation gains in dB
     )
 
-    // Accurate 5-band presets mapped to real working frequencies (60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz)
+    // Accurate 9-band presets mapped to 62.5, 125, 250, 500, 1k, 2k, 4k, 8k, 16k
     val PRESETS = listOf(
-        EqPreset("Flat", listOf(0f, 0f, 0f, 0f, 0f)),
-        EqPreset("Bass Boost", listOf(6.0f, 4.5f, 1.0f, 0f, 1.0f)),
-        EqPreset("Rock", listOf(4.5f, 2.0f, -0.5f, 2.5f, 4.0f)),
-        EqPreset("Pop", listOf(-1.0f, 2.0f, 3.5f, 1.5f, 0.5f)),
-        EqPreset("Electronic", listOf(5.0f, 3.0f, 0f, 2.0f, 3.5f)),
-        EqPreset("Jazz", listOf(3.5f, 1.5f, 1.5f, 2.0f, 2.5f)),
-        EqPreset("Vocal Booster", listOf(-2.0f, 0.5f, 3.5f, 2.5f, 0.5f)),
-        EqPreset("Classical", listOf(4.0f, 2.5f, 1.0f, 2.0f, 2.5f)),
-        EqPreset("Acoustic", listOf(3.5f, 2.0f, 1.0f, 2.5f, 3.0f)),
-        EqPreset("Gaming / Movie", listOf(5.5f, 2.5f, -0.5f, 2.0f, 4.0f)),
+        EqPreset("Flat", listOf(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)),
+        EqPreset("Bass Boost", listOf(6.0f, 5.0f, 3.5f, 1.0f, 0f, 0f, 0.5f, 1.0f, 1.5f)),
+        EqPreset("Rock", listOf(4.5f, 3.0f, 1.5f, -0.5f, 0.5f, 2.0f, 3.0f, 4.0f, 4.5f)),
+        EqPreset("Pop", listOf(-1.0f, 0.5f, 2.0f, 3.5f, 2.5f, 1.5f, 1.0f, 0.5f, 0.5f)),
+        EqPreset("Electronic", listOf(5.5f, 4.5f, 2.5f, 0f, 1.0f, 2.0f, 3.0f, 4.0f, 4.0f)),
+        EqPreset("Jazz", listOf(3.5f, 2.5f, 1.0f, 1.5f, 1.5f, 2.0f, 2.5f, 2.5f, 2.0f)),
+        EqPreset("Vocal Booster", listOf(-2.5f, -1.0f, 1.0f, 3.5f, 4.0f, 3.0f, 1.5f, 0.5f, 0f)),
+        EqPreset("Classical", listOf(4.0f, 3.0f, 2.0f, 1.0f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f)),
+        EqPreset("Acoustic", listOf(3.5f, 2.5f, 1.5f, 1.0f, 1.5f, 2.5f, 3.0f, 3.5f, 3.0f)),
+        EqPreset("Gaming / Movie", listOf(5.5f, 4.0f, 1.5f, -0.5f, 0.5f, 2.0f, 3.0f, 4.5f, 5.0f)),
     )
 
-    // AutoEq profiles mapped to 5 real working bands
+    // AutoEq profiles mapped to 9 Wavelet bands
     val AUTO_EQ_PROFILES = listOf(
         // Apple
-        AutoEqProfile("AirPods Pro 2", "Apple", "In-Ear", listOf(-0.5f, 0.8f, -0.8f, 0.5f, 1.5f)),
-        AutoEqProfile("AirPods Pro", "Apple", "In-Ear", listOf(-0.2f, 0.5f, -0.6f, 0.8f, 1.2f)),
-        AutoEqProfile("AirPods Max", "Apple", "Over-Ear", listOf(-1.2f, -0.5f, 0.8f, 1.5f, 2.3f)),
-        AutoEqProfile("AirPods 3", "Apple", "Earbuds", listOf(1.5f, 1.0f, -0.6f, 0.2f, 1.0f)),
-        AutoEqProfile("EarPods (3.5mm)", "Apple", "Earbuds", listOf(3.0f, 2.0f, -0.2f, 0.8f, 1.5f)),
+        AutoEqProfile("AirPods Pro 2", "Apple", "In-Ear", listOf(-0.5f, 0.2f, 0.8f, -0.8f, 0.0f, 0.5f, 1.2f, 1.5f, 1.0f)),
+        AutoEqProfile("AirPods Pro", "Apple", "In-Ear", listOf(-0.2f, 0.3f, 0.5f, -0.6f, 0.2f, 0.8f, 1.0f, 1.2f, 0.8f)),
+        AutoEqProfile("AirPods Max", "Apple", "Over-Ear", listOf(-1.2f, -0.8f, -0.5f, 0.8f, 1.0f, 1.5f, 2.0f, 2.3f, 1.5f)),
+        AutoEqProfile("AirPods 3", "Apple", "Earbuds", listOf(1.5f, 1.2f, 1.0f, -0.6f, 0.0f, 0.2f, 0.8f, 1.0f, 0.5f)),
+        AutoEqProfile("EarPods (3.5mm)", "Apple", "Earbuds", listOf(3.0f, 2.5f, 2.0f, -0.2f, 0.4f, 0.8f, 1.2f, 1.5f, 1.0f)),
         // Sony
-        AutoEqProfile("WH-1000XM5", "Sony", "Over-Ear", listOf(-3.5f, -2.8f, 0.2f, 1.2f, -0.5f)),
-        AutoEqProfile("WH-1000XM4", "Sony", "Over-Ear", listOf(-4.0f, -3.2f, 0.1f, 1.0f, -1.0f)),
-        AutoEqProfile("WH-1000XM3", "Sony", "Over-Ear", listOf(-4.5f, -3.5f, 0.0f, 0.8f, -1.2f)),
-        AutoEqProfile("WF-1000XM5", "Sony", "In-Ear", listOf(-2.0f, -1.5f, 0.5f, 1.0f, 1.2f)),
-        AutoEqProfile("WF-1000XM4", "Sony", "In-Ear", listOf(-2.5f, -1.8f, 0.3f, 0.8f, 1.0f)),
-        AutoEqProfile("LinkBuds S", "Sony", "In-Ear", listOf(-1.0f, -0.5f, 0.6f, 0.5f, 1.0f)),
-        AutoEqProfile("MDR-7506", "Sony", "Over-Ear", listOf(1.5f, 0.8f, -0.8f, -0.5f, -2.0f)),
+        AutoEqProfile("WH-1000XM5", "Sony", "Over-Ear", listOf(-3.5f, -3.0f, -2.8f, 0.2f, 0.8f, 1.2f, 0.5f, -0.5f, -1.0f)),
+        AutoEqProfile("WH-1000XM4", "Sony", "Over-Ear", listOf(-4.0f, -3.5f, -3.2f, 0.1f, 0.6f, 1.0f, 0.2f, -1.0f, -1.5f)),
+        AutoEqProfile("WH-1000XM3", "Sony", "Over-Ear", listOf(-4.5f, -4.0f, -3.5f, 0.0f, 0.5f, 0.8f, 0.0f, -1.2f, -2.0f)),
+        AutoEqProfile("WF-1000XM5", "Sony", "In-Ear", listOf(-2.0f, -1.8f, -1.5f, 0.5f, 0.8f, 1.0f, 1.2f, 1.2f, 0.5f)),
+        AutoEqProfile("WF-1000XM4", "Sony", "In-Ear", listOf(-2.5f, -2.0f, -1.8f, 0.3f, 0.6f, 0.8f, 1.0f, 1.0f, 0.0f)),
+        AutoEqProfile("LinkBuds S", "Sony", "In-Ear", listOf(-1.0f, -0.8f, -0.5f, 0.6f, 0.5f, 0.5f, 0.8f, 1.0f, 0.5f)),
+        AutoEqProfile("MDR-7506", "Sony", "Over-Ear", listOf(1.5f, 1.0f, 0.8f, -0.8f, -0.2f, -0.5f, -1.5f, -2.0f, -2.5f)),
         // Samsung / AKG
-        AutoEqProfile("Galaxy Buds 2 Pro", "Samsung", "In-Ear", listOf(0.5f, 0.0f, -0.5f, 0.5f, 1.0f)),
-        AutoEqProfile("Galaxy Buds 2", "Samsung", "In-Ear", listOf(0.0f, -0.5f, 0.1f, 0.8f, 0.5f)),
-        AutoEqProfile("Galaxy Buds FE", "Samsung", "In-Ear", listOf(-1.0f, -0.5f, 0.6f, 1.2f, 1.5f)),
-        AutoEqProfile("Galaxy Buds Live", "Samsung", "Earbuds", listOf(3.5f, 2.5f, -0.4f, -0.2f, 1.2f)),
-        AutoEqProfile("AKG K371", "AKG", "Over-Ear", listOf(-0.5f, 0.2f, -0.1f, 0.2f, 0.5f)),
-        AutoEqProfile("AKG N700NC", "AKG", "Over-Ear", listOf(-1.5f, -1.0f, 0.4f, 0.8f, 1.0f)),
+        AutoEqProfile("Galaxy Buds 2 Pro", "Samsung", "In-Ear", listOf(0.5f, 0.2f, 0.0f, -0.5f, 0.2f, 0.5f, 0.8f, 1.0f, 0.5f)),
+        AutoEqProfile("Galaxy Buds 2", "Samsung", "In-Ear", listOf(0.0f, -0.2f, -0.5f, 0.1f, 0.5f, 0.8f, 0.8f, 0.5f, 0.0f)),
+        AutoEqProfile("Galaxy Buds FE", "Samsung", "In-Ear", listOf(-1.0f, -0.8f, -0.5f, 0.6f, 0.8f, 1.2f, 1.5f, 1.5f, 1.0f)),
+        AutoEqProfile("Galaxy Buds Live", "Samsung", "Earbuds", listOf(3.5f, 3.0f, 2.5f, -0.4f, 0.0f, -0.2f, 0.8f, 1.2f, 0.5f)),
+        AutoEqProfile("AKG K371", "AKG", "Over-Ear", listOf(-0.5f, -0.2f, 0.2f, -0.1f, 0.0f, 0.2f, 0.4f, 0.5f, 0.2f)),
+        AutoEqProfile("AKG N700NC", "AKG", "Over-Ear", listOf(-1.5f, -1.2f, -1.0f, 0.4f, 0.6f, 0.8f, 1.0f, 1.0f, 0.5f)),
         // Sennheiser
-        AutoEqProfile("Momentum 4", "Sennheiser", "Over-Ear", listOf(-2.5f, -1.8f, 0.2f, 1.0f, 0.0f)),
-        AutoEqProfile("Momentum TW 3", "Sennheiser", "In-Ear", listOf(-2.0f, -1.2f, 0.4f, 0.8f, 0.5f)),
-        AutoEqProfile("HD 600", "Sennheiser", "Over-Ear", listOf(4.5f, 3.2f, 0.5f, -0.2f, -0.5f)),
-        AutoEqProfile("HD 650", "Sennheiser", "Over-Ear", listOf(4.0f, 2.8f, 0.4f, 0.0f, -0.2f)),
-        AutoEqProfile("HD 560S", "Sennheiser", "Over-Ear", listOf(2.5f, 1.5f, 0.0f, -0.5f, 0.2f)),
-        AutoEqProfile("IE 200", "Sennheiser", "In-Ear", listOf(1.0f, 0.5f, -0.3f, 0.2f, 1.2f)),
-        AutoEqProfile("HD 280 Pro", "Sennheiser", "Over-Ear", listOf(1.0f, 0.5f, -1.0f, -0.5f, 0.8f)),
+        AutoEqProfile("Momentum 4", "Sennheiser", "Over-Ear", listOf(-2.5f, -2.0f, -1.8f, 0.2f, 0.6f, 1.0f, 0.8f, 0.0f, -0.5f)),
+        AutoEqProfile("Momentum TW 3", "Sennheiser", "In-Ear", listOf(-2.0f, -1.5f, -1.2f, 0.4f, 0.6f, 0.8f, 0.8f, 0.5f, 0.0f)),
+        AutoEqProfile("HD 600", "Sennheiser", "Over-Ear", listOf(4.5f, 3.8f, 3.2f, 0.5f, 0.0f, -0.2f, -0.5f, -0.5f, -1.0f)),
+        AutoEqProfile("HD 650", "Sennheiser", "Over-Ear", listOf(4.0f, 3.5f, 2.8f, 0.4f, 0.0f, 0.0f, -0.2f, -0.2f, -0.8f)),
+        AutoEqProfile("HD 560S", "Sennheiser", "Over-Ear", listOf(2.5f, 2.0f, 1.5f, 0.0f, -0.2f, -0.5f, 0.0f, 0.2f, 0.0f)),
+        AutoEqProfile("IE 200", "Sennheiser", "In-Ear", listOf(1.0f, 0.8f, 0.5f, -0.3f, 0.0f, 0.2f, 0.8f, 1.2f, 1.0f)),
         // Beyerdynamic
-        AutoEqProfile("DT 770 Pro (80Ω)", "Beyerdynamic", "Over-Ear", listOf(-1.5f, -0.8f, 0.8f, 0.5f, -3.8f)),
-        AutoEqProfile("DT 990 Pro (250Ω)", "Beyerdynamic", "Over-Ear", listOf(3.0f, 2.0f, 0.0f, -0.8f, -4.5f)),
-        AutoEqProfile("DT 1990 Pro", "Beyerdynamic", "Over-Ear", listOf(1.5f, 0.8f, -0.2f, -0.2f, -3.0f)),
-        AutoEqProfile("TYGR 300 R", "Beyerdynamic", "Over-Ear", listOf(0.5f, 0.0f, 0.4f, 0.2f, -1.5f)),
+        AutoEqProfile("DT 770 Pro (80Ω)", "Beyerdynamic", "Over-Ear", listOf(-1.5f, -1.0f, -0.8f, 0.8f, 0.6f, 0.5f, -1.5f, -3.8f, -4.0f)),
+        AutoEqProfile("DT 990 Pro (250Ω)", "Beyerdynamic", "Over-Ear", listOf(3.0f, 2.5f, 2.0f, 0.0f, -0.5f, -0.8f, -2.5f, -4.5f, -5.0f)),
+        AutoEqProfile("DT 1990 Pro", "Beyerdynamic", "Over-Ear", listOf(1.5f, 1.0f, 0.8f, -0.2f, -0.2f, -0.2f, -1.5f, -3.0f, -3.5f)),
         // Audio-Technica
-        AutoEqProfile("ATH-M50x", "Audio-Technica", "Over-Ear", listOf(-2.0f, -1.5f, 0.5f, 1.0f, 1.5f)),
-        AutoEqProfile("ATH-M40x", "Audio-Technica", "Over-Ear", listOf(-0.5f, 0.0f, 0.1f, 0.5f, 0.8f)),
-        AutoEqProfile("ATH-R70x", "Audio-Technica", "Over-Ear", listOf(2.0f, 1.2f, 0.1f, 0.0f, 0.5f)),
+        AutoEqProfile("ATH-M50x", "Audio-Technica", "Over-Ear", listOf(-2.0f, -1.8f, -1.5f, 0.5f, 0.8f, 1.0f, 1.2f, 1.5f, 1.0f)),
+        AutoEqProfile("ATH-M40x", "Audio-Technica", "Over-Ear", listOf(-0.5f, -0.2f, 0.0f, 0.1f, 0.4f, 0.5f, 0.6f, 0.8f, 0.5f)),
         // Bose
-        AutoEqProfile("QuietComfort 45", "Bose", "Over-Ear", listOf(-1.0f, -0.5f, 0.8f, 1.2f, 1.0f)),
-        AutoEqProfile("QC Ultra", "Bose", "Over-Ear", listOf(-1.5f, -0.8f, 0.6f, 1.0f, 1.2f)),
-        AutoEqProfile("NC 700", "Bose", "Over-Ear", listOf(-0.5f, 0.0f, 0.6f, 0.5f, 0.8f)),
-        // JBL
-        AutoEqProfile("Tune 510BT", "JBL", "On-Ear", listOf(-3.0f, -2.0f, 0.2f, 1.0f, -1.5f)),
-        AutoEqProfile("Tune 760NC", "JBL", "Over-Ear", listOf(-2.5f, -1.8f, 0.4f, 0.8f, -1.0f)),
-        AutoEqProfile("Live 660NC", "JBL", "On-Ear", listOf(-2.0f, -1.2f, 0.3f, 0.5f, -0.5f)),
-        AutoEqProfile("Wave Flex", "JBL", "Earbuds", listOf(2.0f, 1.5f, -0.2f, 0.2f, 1.0f)),
+        AutoEqProfile("QuietComfort 45", "Bose", "Over-Ear", listOf(-1.0f, -0.8f, -0.5f, 0.8f, 1.0f, 1.2f, 1.2f, 1.0f, 0.5f)),
+        AutoEqProfile("QC Ultra", "Bose", "Over-Ear", listOf(-1.5f, -1.0f, -0.8f, 0.6f, 0.8f, 1.0f, 1.2f, 1.2f, 0.8f)),
         // Moondrop
-        AutoEqProfile("Chu II", "Moondrop", "In-Ear", listOf(0.0f, 0.5f, -0.2f, 0.0f, 0.5f)),
-        AutoEqProfile("Aria", "Moondrop", "In-Ear", listOf(-0.5f, 0.2f, -0.1f, 0.2f, 0.8f)),
-        AutoEqProfile("Blessing 3", "Moondrop", "In-Ear", listOf(0.2f, 0.5f, -0.4f, 0.0f, 0.5f)),
-        AutoEqProfile("Space Travel", "Moondrop", "In-Ear", listOf(-0.8f, -0.2f, 0.4f, 0.8f, 1.0f)),
-        AutoEqProfile("Kato", "Moondrop", "In-Ear", listOf(-0.2f, 0.2f, -0.1f, 0.2f, 0.5f)),
-        // Soundcore / Anker
-        AutoEqProfile("Space Q45", "Soundcore", "Over-Ear", listOf(-3.0f, -2.2f, 0.4f, 1.0f, 0.8f)),
-        AutoEqProfile("Liberty 4 NC", "Soundcore", "In-Ear", listOf(-2.5f, -1.8f, 0.6f, 1.2f, 1.0f)),
-        AutoEqProfile("Life Q30", "Soundcore", "Over-Ear", listOf(-4.5f, -3.5f, 0.2f, 0.8f, -0.5f)),
-        // Xiaomi / Redmi
-        AutoEqProfile("Redmi Buds 5 Pro", "Xiaomi", "In-Ear", listOf(-1.2f, -0.5f, 0.4f, 0.8f, 1.0f)),
-        AutoEqProfile("Buds 4 Pro", "Xiaomi", "In-Ear", listOf(-1.0f, -0.2f, 0.3f, 0.5f, 0.8f)),
-        AutoEqProfile("Poco Buds Pro", "Xiaomi", "In-Ear", listOf(-2.0f, -1.2f, 0.5f, 1.0f, 0.5f)),
-        // Huawei
-        AutoEqProfile("FreeBuds Pro 3", "Huawei", "In-Ear", listOf(-0.8f, 0.2f, 0.1f, 0.5f, 1.2f)),
-        AutoEqProfile("FreeBuds 5i", "Huawei", "In-Ear", listOf(-1.5f, -0.8f, 0.5f, 1.0f, 0.8f)),
-        // Beats
-        AutoEqProfile("Beats Studio Pro", "Beats", "Over-Ear", listOf(-1.8f, -1.0f, 0.4f, 0.8f, 1.2f)),
-        AutoEqProfile("Beats Fit Pro", "Beats", "In-Ear", listOf(-2.0f, -1.2f, 0.5f, 1.0f, 1.0f)),
-        AutoEqProfile("Solo3 Wireless", "Beats", "On-Ear", listOf(-4.0f, -3.0f, 0.3f, 0.5f, 0.0f)),
-        // Marshall
-        AutoEqProfile("Major IV", "Marshall", "On-Ear", listOf(-3.5f, -2.5f, 0.4f, 1.2f, 0.0f)),
-        AutoEqProfile("Motif II A.N.C.", "Marshall", "In-Ear", listOf(-2.0f, -1.2f, 0.5f, 1.0f, 0.8f)),
-        // Shure
-        AutoEqProfile("SE215", "Shure", "In-Ear", listOf(-3.0f, -2.0f, 0.6f, 1.5f, -1.0f)),
-        AutoEqProfile("AONIC 50", "Shure", "Over-Ear", listOf(-0.5f, 0.0f, 0.4f, 0.2f, 0.8f)),
+        AutoEqProfile("Chu II", "Moondrop", "In-Ear", listOf(0.0f, 0.2f, 0.5f, -0.2f, 0.0f, 0.0f, 0.2f, 0.5f, 0.5f)),
+        AutoEqProfile("Aria", "Moondrop", "In-Ear", listOf(-0.5f, 0.0f, 0.2f, -0.1f, 0.0f, 0.2f, 0.5f, 0.8f, 0.5f)),
+        // Soundcore
+        AutoEqProfile("Space Q45", "Soundcore", "Over-Ear", listOf(-3.0f, -2.5f, -2.2f, 0.4f, 0.8f, 1.0f, 1.0f, 0.8f, 0.0f)),
+        AutoEqProfile("Liberty 4 NC", "Soundcore", "In-Ear", listOf(-2.5f, -2.0f, -1.8f, 0.6f, 1.0f, 1.2f, 1.2f, 1.0f, 0.5f)),
     )
 
     private var equalizer: Equalizer? = null
@@ -142,20 +109,6 @@ object WaveletAudioEngine {
         try {
             // Audio session 0 applies effect globally to media output
             equalizer = Equalizer(0, 0).apply {
-                val numBands = numberOfBands.toInt()
-                if (numBands > 0) {
-                    val freqs = mutableListOf<Int>()
-                    val labels = mutableListOf<String>()
-                    for (i in 0 until numBands) {
-                        val milliHz = getCenterFreq(i.toShort())
-                        val hz = milliHz / 1000
-                        freqs.add(hz)
-                        labels.add(if (hz >= 1000) String.format("%.1f kHz", hz / 1000.0) else "$hz Hz")
-                    }
-                    detectedFrequencies = freqs
-                    detectedLabels = labels
-                    Log.d(TAG, "Hardware Equalizer probed: $numBands bands at $freqs")
-                }
                 enabled = getMasterEnabled(context)
             }
             bassBoost = BassBoost(0, 0).apply {
@@ -174,28 +127,26 @@ object WaveletAudioEngine {
                 enabled = getMasterEnabled(context) && getReverbEnabled(context)
                 preset = getReverbPreset(context).toShort()
             }
-            applyBandGains(context, getBandGains(context))
+            applyAllGainsToHardware(getBandGains(context))
             isInitialized = true
-            Log.d(TAG, "Wavelet audio effects initialized successfully.")
+            Log.d(TAG, "Wavelet 9-band audio effects engine initialized.")
         } catch (e: Exception) {
-            Log.w(TAG, "Hardware audio effects initialization note: ${e.message}")
+            Log.w(TAG, "Audio effects initialization note: ${e.message}")
         }
     }
 
-    fun getBandCount(context: Context): Int {
-        val num = equalizer?.numberOfBands?.toInt()
-        return if (num != null && num > 0) num else detectedFrequencies.size
-    }
+    fun getBandCount(context: Context): Int = WAVELET_FREQUENCIES.size
 
-    fun getBandFrequencies(context: Context): List<Int> = detectedFrequencies
+    fun getBandFrequencies(context: Context): List<Float> = WAVELET_FREQUENCIES
 
-    fun getBandLabels(context: Context): List<String> = detectedLabels
+    fun getBandLabels(context: Context): List<String> = WAVELET_LABELS
+
+    fun getBandFullLabels(context: Context): List<String> = WAVELET_FULL_LABELS
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
-    // Default to false: all toggles are OFF by default
     fun getMasterEnabled(context: Context): Boolean =
         getPrefs(context).getBoolean("eq_master_enabled", false)
 
@@ -211,45 +162,73 @@ object WaveletAudioEngine {
 
     fun getBandGains(context: Context): List<Float> {
         val prefs = getPrefs(context)
-        val count = getBandCount(context)
-        return (0 until count).map { i ->
-            prefs.getFloat("eq_band_$i", 0f)
+        return (0 until WAVELET_FREQUENCIES.size).map { i ->
+            prefs.getFloat("eq_wavelet_band_$i", 0f)
         }
     }
 
     fun setBandGain(context: Context, bandIndex: Int, gainDb: Float) {
         val clamped = gainDb.coerceIn(-12f, 12f)
-        getPrefs(context).edit().putFloat("eq_band_$bandIndex", clamped).apply()
-        applyBandGainToHardware(bandIndex, clamped)
+        getPrefs(context).edit().putFloat("eq_wavelet_band_$bandIndex", clamped).apply()
+        val currentGains = getBandGains(context).toMutableList()
+        if (bandIndex < currentGains.size) {
+            currentGains[bandIndex] = clamped
+        }
+        applyAllGainsToHardware(currentGains)
     }
 
     fun setAllBandGains(context: Context, gains: List<Float>) {
         val editor = getPrefs(context).edit()
         gains.forEachIndexed { i, g ->
             val clamped = g.coerceIn(-12f, 12f)
-            editor.putFloat("eq_band_$i", clamped)
-            applyBandGainToHardware(i, clamped)
+            editor.putFloat("eq_wavelet_band_$i", clamped)
         }
         editor.apply()
+        applyAllGainsToHardware(gains)
     }
 
-    private fun applyBandGainToHardware(bandIndex: Int, gainDb: Float) {
+    /**
+     * Interpolates 9 Wavelet octave bands into the device's hardware Equalizer HAL bands (typically 5 bands)
+     * using logarithmic frequency mapping so adjustments are audibly and mathematically precise.
+     */
+    private fun applyAllGainsToHardware(waveletGains: List<Float>) {
         runCatching {
             equalizer?.let { eq ->
-                val numBands = eq.numberOfBands.toInt()
-                if (bandIndex < numBands) {
-                    val minLevel = eq.bandLevelRange[0]
-                    val maxLevel = eq.bandLevelRange[1]
-                    // Map -12dB..+12dB to millibels range (usually -1500..+1500 mB)
-                    val mb = (gainDb * 100).toInt().coerceIn(minLevel.toInt(), maxLevel.toInt()).toShort()
-                    eq.setBandLevel(bandIndex.toShort(), mb)
+                val numHwBands = eq.numberOfBands.toInt()
+                if (numHwBands <= 0) return@let
+                val minLevel = eq.bandLevelRange[0]
+                val maxLevel = eq.bandLevelRange[1]
+
+                for (hwBand in 0 until numHwBands) {
+                    val centerFreqHz = eq.getCenterFreq(hwBand.toShort()) / 1000.0f // in Hz
+                    val interpolatedGainDb = interpolateGainAtFrequency(centerFreqHz, waveletGains)
+                    val mb = (interpolatedGainDb * 100).toInt().coerceIn(minLevel.toInt(), maxLevel.toInt()).toShort()
+                    eq.setBandLevel(hwBand.toShort(), mb)
                 }
             }
         }
     }
 
-    private fun applyBandGains(context: Context, gains: List<Float>) {
-        gains.forEachIndexed { i, g -> applyBandGainToHardware(i, g) }
+    private fun interpolateGainAtFrequency(targetFreqHz: Float, waveletGains: List<Float>): Float {
+        if (waveletGains.isEmpty()) return 0f
+        if (targetFreqHz <= WAVELET_FREQUENCIES.first()) return waveletGains.first()
+        if (targetFreqHz >= WAVELET_FREQUENCIES.last()) return waveletGains.last()
+
+        for (i in 0 until WAVELET_FREQUENCIES.size - 1) {
+            val f0 = WAVELET_FREQUENCIES[i]
+            val f1 = WAVELET_FREQUENCIES[i + 1]
+            if (targetFreqHz in f0..f1) {
+                val g0 = waveletGains.getOrElse(i) { 0f }
+                val g1 = waveletGains.getOrElse(i + 1) { 0f }
+                // Logarithmic interpolation
+                val logTarget = Math.log(targetFreqHz.toDouble())
+                val logF0 = Math.log(f0.toDouble())
+                val logF1 = Math.log(f1.toDouble())
+                val fraction = ((logTarget - logF0) / (logF1 - logF0)).toFloat().coerceIn(0f, 1f)
+                return g0 + fraction * (g1 - g0)
+            }
+        }
+        return waveletGains.first()
     }
 
     fun getSelectedPreset(context: Context): String =

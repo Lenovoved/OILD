@@ -55,7 +55,6 @@ fun CastTab(context: Context, prefs: SharedPreferences, onRedoSetup: () -> Unit)
     val tick = rememberResumeTick()
     val listenerText = remember(tick.intValue) { listenerStatusText(context) }
     val batteryText = remember(tick.intValue) { batteryStatusText(context) }
-    val accessibilityText = remember(tick.intValue) { accessibilityStatusText(context) }
     // Neither vivo toggle is readable, so all we can track is whether the user has been sent to that
     // screen — the same ack flag the onboarding row writes.
     var autoStartAck by remember { mutableStateOf(prefs.getBoolean("onboarding_autostart_ack", false)) }
@@ -95,28 +94,24 @@ fun CastTab(context: Context, prefs: SharedPreferences, onRedoSetup: () -> Unit)
                     ToggleRow("Обычные уведомления", castOn) {
                         castOn = it
                         prefs.edit().putBoolean("cast_normal_notifications", it).putBoolean("cast_notifications", it).apply()
-                        if (it) PlaygroundService.keepAlive(context)
                         NotificationCastListener.onCategorySettingsChanged(context, "normal", it)
                         NotificationCastListener.instance?.recastAll()
                     }
                     ToggleRow("Уведомления мессенджеров", messengerOn) {
                         messengerOn = it
                         prefs.edit().putBoolean("cast_messenger_notifications", it).apply()
-                        if (it) PlaygroundService.keepAlive(context)
                         NotificationCastListener.onCategorySettingsChanged(context, "messenger", it)
                         NotificationCastListener.instance?.recastAll()
                     }
                     ToggleRow("Уведомления навигаторов", navOn) {
                         navOn = it
                         prefs.edit().putBoolean("cast_nav_notifications", it).apply()
-                        if (it) PlaygroundService.keepAlive(context)
                         NotificationCastListener.onCategorySettingsChanged(context, "navigation", it)
                         NotificationCastListener.instance?.recastAll()
                     }
                     ToggleRow("Уведомления плеером", mediaOn) {
                         mediaOn = it
                         prefs.edit().putBoolean("cast_media_sessions", it).apply()
-                        if (it) PlaygroundService.keepAlive(context)
                         NotificationCastListener.onMediaSettingsChanged(context, it)
                         NotificationCastListener.instance?.recastAll()
                     }
@@ -182,15 +177,6 @@ fun CastTab(context: Context, prefs: SharedPreferences, onRedoSetup: () -> Unit)
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text("Stop OriginOS killing it (battery)") }
                         OutlinedButton(
-                            onClick = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Keep alive without status-bar icon") }
-                        Text(
-                            "Enable \"Origin Isle keep-alive\" under Accessibility to run in the background " +
-                                "with NO status-bar icon. It reads nothing.",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        OutlinedButton(
                             onClick = {
                                 if (openAutoStartSettings(context)) {
                                     autoStartAck = true
@@ -205,7 +191,6 @@ fun CastTab(context: Context, prefs: SharedPreferences, onRedoSetup: () -> Unit)
                         )
                         Text(listenerText, style = MaterialTheme.typography.bodySmall)
                         Text(batteryText, style = MaterialTheme.typography.bodySmall)
-                        Text(accessibilityText, style = MaterialTheme.typography.bodySmall)
                         Text(autoStartText, style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = onRedoSetup, modifier = Modifier.fillMaxWidth()) {
                             Text("Redo first-run setup")
@@ -304,7 +289,6 @@ private fun stopAll(context: Context) {
  * alive and request a rebind so the sweep works on the next tap.
  */
 private fun recastAll(context: Context) {
-    PlaygroundService.keepAlive(context)
     val listener = NotificationCastListener.instance
     if (listener == null) {
         val message = when (NotificationCastListener.forceRebind(context)) {

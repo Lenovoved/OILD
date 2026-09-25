@@ -122,7 +122,6 @@ fun LogTab(context: Context) {
 }
 
 private fun reconnectListener(context: Context) {
-    PlaygroundService.keepAlive(context)
     val message = when (NotificationCastListener.forceRebind(context)) {
         NotificationCastListener.RebindResult.REBINDING ->
             "Rebinding listener… give it a few seconds."

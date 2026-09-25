@@ -97,10 +97,10 @@ object GenericCard {
             rawChip
         }
 
-        val capsuleTitle = if (maxCapsuleChars > 0 && rawTitle.length > maxCapsuleChars) {
-            rawTitle.take(maxCapsuleChars) + "…"
-        } else {
-            rawTitle
+        val capsuleTitle = when {
+            notifStyle == "app_name_only" -> appLabel
+            maxCapsuleChars > 0 && rawTitle.length > maxCapsuleChars -> rawTitle.take(maxCapsuleChars) + "…"
+            else -> rawTitle
         }
 
         n.smallIcon?.let { IconCache.activeSmallIcons[id] = it }
@@ -126,7 +126,7 @@ object GenericCard {
             putExtra("category", category)
             putExtra("is_ongoing", isLive)
             putExtra("oi_scene", if (category == "navigation") "NAVIGATION" else "NAVIGATION")
-            putExtra("title", rawTitle)
+            putExtra("title", if (notifStyle == "app_name_only") appLabel else rawTitle)
             putExtra("text", bodyText.ifBlank { finalChip }.ifBlank { appLabel })
             putExtra("subtext", rawSubText)
             putExtra("source_app", appLabel)
@@ -146,6 +146,10 @@ object GenericCard {
                 putExtra("oi_large_icon", it)
             }
             when {
+                notifStyle == "app_name_only" -> {
+                    putExtra("oi_template", OriginIslandConstants.TEMPLATE_BASE)
+                    putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_CAPSULE_TEXT)
+                }
                 notifStyle == "compact" -> {
                     putExtra("oi_template", OriginIslandConstants.TEMPLATE_BASE)
                     putExtra("oi_right_template", OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_CAPSULE_TEXT)
