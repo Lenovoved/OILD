@@ -298,6 +298,16 @@ class PlaygroundService : Service() {
 
         val changeRecord = ((originChangeRecord[id] ?: 0) + 1).also { originChangeRecord[id] = it }
 
+        // Right template override from user preferences
+        val prefRightTemplate = globalPrefs.getString("cast_right_template", "auto") ?: "auto"
+        val finalRightTemplate = when (prefRightTemplate) {
+            "capsule" -> OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_CAPSULE_TEXT
+            "text_icon" -> OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_TEXT_ICON
+            "wave" -> OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_WAVE
+            "progress" -> OriginIslandConstants.TEMPLATE_RIGHT_ISLAND_PROGRESS
+            else -> rightTemplate
+        }
+
         val bundle = OriginIslandBuilder.buildBundle(
             context = this,
             template = template,
@@ -306,7 +316,7 @@ class PlaygroundService : Service() {
             leftContent = leftContent,
             rightContent = chip,
             extra1 = extra1, extra2 = extra2, extra3 = extra3, extra4 = extra4,
-            rightTemplate = rightTemplate,
+            rightTemplate = finalRightTemplate,
             defaultIcon = baseIcon,
             leftIcon = leftIcon,
             rightIcon = rightIcon,

@@ -40,8 +40,8 @@ object GenericCard {
             extras.getString(NotificationCompat.EXTRA_TEMPLATE) == "android.app.Notification\$CallStyle"
 
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val maxCapsuleChars = prefs.getInt("notification_capsule_chars", 24).coerceIn(8, 100)
-        val maxBodyChars = prefs.getInt("notification_body_chars", 120).coerceIn(20, 1000)
+        val maxCapsuleChars = prefs.getInt("notification_capsule_chars", 24).coerceIn(1, 100)
+        val maxBodyChars = prefs.getInt("notification_body_chars", 120).coerceIn(1, 1000)
         val notifStyle = prefs.getString("notification_display_style", "classic") ?: "classic"
         val notifShowTimestamp = prefs.getBoolean("notification_show_timestamp", true)
         val autoDismissSec = prefs.getInt("cast_auto_dismiss_seconds", 0)

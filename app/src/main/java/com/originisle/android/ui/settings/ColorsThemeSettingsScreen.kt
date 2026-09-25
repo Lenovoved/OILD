@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,6 +43,9 @@ fun ColorsThemeSettingsScreen(
     var rightTemplateOverride by remember {
         mutableStateOf(prefs.getString("cast_right_template", "auto") ?: "auto")
     }
+    var soundEnabled by remember {
+        mutableStateOf(prefs.getBoolean("cast_sound", false))
+    }
 
     val capsuleColors = listOf(
         0 to "По умолчанию",
@@ -59,7 +63,7 @@ fun ColorsThemeSettingsScreen(
     ) {
         SettingsTopBar(
             title = "Цветовая палитра и темы",
-            subtitle = "Настройка акцентных цветов и шаблонов капсулы",
+            subtitle = "Настройка акцентных цветов, звука и шаблонов капсулы",
             onBack = onBack,
         )
 
@@ -67,6 +71,23 @@ fun ColorsThemeSettingsScreen(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // SuperX Sound Setting
+            SettingsCard {
+                SettingsSectionHeader("Звук SuperX уведомлений OriginOS", Icons.Default.VolumeUp)
+
+                SettingsToggleRow(
+                    title = "Системный звук OriginOS 6 (SuperX Sound)",
+                    subtitle = "Воспроизводить фирменный системный звуковой сигнал SuperX при появлении карточки на динамическом островке",
+                    checked = soundEnabled,
+                    onCheckedChange = { checked ->
+                        soundEnabled = checked
+                        prefs.edit().putBoolean("cast_sound", checked).apply()
+                        NotificationCastListener.instance?.reload()
+                        NotificationCastListener.instance?.recastAll()
+                    },
+                )
+            }
+
             // Capsule Chip Background Color
             SettingsCard {
                 SettingsSectionHeader("Цвет правой капсулы (Chip)", Icons.Default.ColorLens)

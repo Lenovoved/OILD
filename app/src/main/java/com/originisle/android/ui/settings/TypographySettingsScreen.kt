@@ -55,10 +55,10 @@ fun TypographySettingsScreen(
         mutableStateOf(prefs.getString("notification_display_style", "classic") ?: "classic")
     }
     var capsuleCharsFloat by remember {
-        mutableFloatStateOf(prefs.getInt("notification_capsule_chars", 24).coerceIn(8, 100).toFloat())
+        mutableFloatStateOf(prefs.getInt("notification_capsule_chars", 24).coerceIn(1, 100).toFloat())
     }
     var bodyCharsFloat by remember {
-        mutableFloatStateOf(prefs.getInt("notification_body_chars", 120).coerceIn(20, 500).toFloat())
+        mutableFloatStateOf(prefs.getInt("notification_body_chars", 120).coerceIn(1, 500).toFloat())
     }
     val showTimestamp = prefs.getBoolean("notification_show_timestamp", true)
 
@@ -110,7 +110,7 @@ fun TypographySettingsScreen(
                 )
             }
 
-            // Capsule Character Limit Slider (8..100)
+            // Capsule Character Limit Slider (1..100)
             SettingsCard {
                 SettingsSectionHeader("Символы в капсуле", Icons.Default.TextFields)
 
@@ -146,25 +146,25 @@ fun TypographySettingsScreen(
                     value = capsuleCharsFloat,
                     onValueChange = { newVal ->
                         capsuleCharsFloat = newVal
-                        val rounded = newVal.roundToInt()
+                        val rounded = newVal.roundToInt().coerceIn(1, 100)
                         prefs.edit().putInt("notification_capsule_chars", rounded).apply()
                         NotificationCastListener.instance?.reload()
                     },
-                    valueRange = 8f..100f,
-                    steps = 91, // (100 - 8 - 1) = 91 steps for integer precision 8..100
+                    valueRange = 1f..100f,
+                    steps = 98, // (100 - 1 - 1) = 98 steps for integer precision 1..100
                 )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("8 (мин)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                    Text("1 (мин)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
                     Text("24 (стандарт)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
                     Text("100 (макс)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
                 }
             }
 
-            // Message Body Character Limit Slider (20..500)
+            // Message Body Character Limit Slider (1..500)
             SettingsCard {
                 SettingsSectionHeader("Символы в теле сообщения", Icons.Default.TextFields)
 
@@ -200,19 +200,18 @@ fun TypographySettingsScreen(
                     value = bodyCharsFloat,
                     onValueChange = { newVal ->
                         bodyCharsFloat = newVal
-                        val rounded = (newVal / 5f).roundToInt() * 5
+                        val rounded = newVal.roundToInt().coerceIn(1, 500)
                         prefs.edit().putInt("notification_body_chars", rounded).apply()
                         NotificationCastListener.instance?.reload()
                     },
-                    valueRange = 20f..500f,
-                    steps = 47, // step of 10
+                    valueRange = 1f..500f,
                 )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("20 (кратко)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                    Text("1 (мин)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
                     Text("120 (стандарт)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
                     Text("500 (полный)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
                 }
