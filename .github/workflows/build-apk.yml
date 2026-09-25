@@ -1,0 +1,66 @@
+name: Build Origin OS APK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Package APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew 2>/dev/null || true
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Build Release APK
+        run: |
+          if [ -n "${{ secrets.STORE_PASSWORD }}" ] && [ -n "${{ secrets.KEY_PASSWORD }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-upload-key.jks
+            export KEYSTORE_PATH="$(pwd)/my-upload-key.jks"
+            export STORE_PASSWORD="${{ secrets.STORE_PASSWORD }}"
+            export KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+            ./gradlew assembleRelease --stacktrace
+          else
+            echo "Release keystore secrets not configured, building unsigned/default release"
+            ./gradlew assembleRelease --stacktrace || ./gradlew assembleDebug
+          fi
+
+      - name: Prepare APK Outputs
+        run: |
+          mkdir -p build-outputs
+          find app/build/outputs/apk/ -name "*.apk" -exec cp {} build-outputs/ \;
+          cd build-outputs
+          for file in *.apk; do
+            if [[ "$file" == *"debug"* ]]; then
+              cp "$file" "Origin_OS_debug.apk"
+            elif [[ "$file" == *"release"* ]]; then
+              cp "$file" "Origin_OS_release.apk"
+            fi
+          done
+          ls -la
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Origin_OS_APK
+          path: build-outputs/*.apk
+          retention-days: 30

@@ -22,7 +22,7 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Origin Space"
+rootProject.name = "Origin OS"
 
 
 include(":app")
