@@ -46,6 +46,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.magnifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.input.pointer.pointerInput
@@ -118,6 +119,7 @@ import com.lenovoved.android.ui.settings.CategoriesSettingsScreen
 import com.lenovoved.android.ui.settings.ColorsThemeSettingsScreen
 import com.lenovoved.android.ui.settings.DurationSettingsScreen
 import com.lenovoved.android.ui.settings.IPhoneHalfSilhouette
+import com.lenovoved.android.ui.settings.opticalMagnifier
 import com.lenovoved.android.ui.settings.PermissionsSettingsScreen
 import com.lenovoved.android.ui.settings.SettingsCard
 import com.lenovoved.android.ui.settings.SettingsSectionHeader
@@ -381,18 +383,7 @@ private fun OriginSpaceMainHub(
         )
     }
 
-    var dialogCenterInRoot by remember { mutableStateOf(Offset.Unspecified) }
-    var dialogSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
-
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val magnifierSize = remember(dialogSize) {
-        with(density) {
-            androidx.compose.ui.unit.DpSize(
-                dialogSize.width.toDp(),
-                dialogSize.height.toDp()
-            )
-        }
-    }
+    var dialogRect by remember { mutableStateOf<android.graphics.RectF?>(null) }
 
     Box(
         modifier = Modifier
@@ -403,20 +394,10 @@ private fun OriginSpaceMainHub(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .then(
-                    if (showInfoDialog && dialogCenterInRoot.isSpecified && magnifierSize.width > 0.dp && magnifierSize.height > 0.dp) {
-                        Modifier.magnifier(
-                            sourceCenter = { dialogCenterInRoot },
-                            magnifierCenter = { dialogCenterInRoot },
-                            zoom = 1.2f,
-                            size = magnifierSize,
-                            cornerRadius = 24.dp,
-                            elevation = 0.dp,
-                            clip = true
-                        )
-                    } else {
-                        Modifier
-                    }
+                .opticalMagnifier(
+                    enabled = showInfoDialog,
+                    rect = dialogRect,
+                    zoom = 1.25f
                 )
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
@@ -625,12 +606,13 @@ private fun OriginSpaceMainHub(
                     .statusBarsPadding()
                     .padding(top = 44.dp, end = 12.dp)
                     .onGloballyPositioned { coords ->
-                        val position = coords.positionInRoot()
-                        dialogCenterInRoot = Offset(
-                            x = position.x + coords.size.width / 2f,
-                            y = position.y + coords.size.height / 2f
+                        val pos = coords.positionInRoot()
+                        dialogRect = android.graphics.RectF(
+                            pos.x,
+                            pos.y,
+                            pos.x + coords.size.width,
+                            pos.y + coords.size.height
                         )
-                        dialogSize = coords.size
                     }
                     .graphicsLayer {
                         scaleX = popoutProgress
