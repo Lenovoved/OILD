@@ -60,11 +60,11 @@
             android:name=".service.MediaControlReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.originisle.android.MEDIA_PLAY_PAUSE" />
-                <action android:name="com.originisle.android.MEDIA_NEXT" />
-                <action android:name="com.originisle.android.MEDIA_PREV" />
-                <action android:name="com.originisle.android.MEDIA_SEEK" />
-                <action android:name="com.originisle.android.MEDIA_CUSTOM" />
+                <action android:name="com.lenovoved.android.MEDIA_PLAY_PAUSE" />
+                <action android:name="com.lenovoved.android.MEDIA_NEXT" />
+                <action android:name="com.lenovoved.android.MEDIA_PREV" />
+                <action android:name="com.lenovoved.android.MEDIA_SEEK" />
+                <action android:name="com.lenovoved.android.MEDIA_CUSTOM" />
             </intent-filter>
         </receiver>
 

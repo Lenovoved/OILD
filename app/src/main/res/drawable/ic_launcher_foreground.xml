@@ -1,30 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
+
+    <!-- Outer Ambient Glow Circle -->
+    <path
+        android:pathData="M 54,6 A 48,48 0 1 1 53.99,6 Z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
+                android:centerX="54"
+                android:centerY="54"
+                android:gradientRadius="48"
+                android:type="radial">
+                <item android:color="#201E293B" android:offset="0.0" />
+                <item android:color="#100F172A" android:offset="0.7" />
+                <item android:color="#00080A10" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
+
+    <!-- Outer Thin Glass Ring with Dual Tone Amber-Blue Gradient -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:pathData="M 54,12 A 42,42 0 1 1 53.99,12 Z"
+        android:strokeWidth="2.2"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="12"
+                android:startY="12"
+                android:endX="96"
+                android:endY="96"
+                android:type="linear">
+                <item android:color="#FFD700" android:offset="0.0" />
+                <item android:color="#FF8C00" android:offset="0.3" />
+                <item android:color="#8A2BE2" android:offset="0.6" />
+                <item android:color="#00D2FF" android:offset="0.85" />
+                <item android:color="#0055FF" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Base Sphere Dark Glass Body -->
+    <path
+        android:pathData="M 54,19 A 35,35 0 1 1 53.99,19 Z"
+        android:fillColor="#090D20" />
+
+    <!-- Blue Liquid Swirl (Bottom-Right Dome) -->
+    <path
+        android:pathData="M 54,19 A 35,35 0 1 1 19,54 C 34,68 68,34 54,19 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="68"
+                android:centerY="70"
+                android:gradientRadius="42"
+                android:type="radial">
+                <item android:color="#80D8FF" android:offset="0.0" />
+                <item android:color="#0091EA" android:offset="0.35" />
+                <item android:color="#002171" android:offset="0.75" />
+                <item android:color="#030825" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Golden Amber Liquid Swirl (Top-Left Dome) -->
+    <path
+        android:pathData="M 54,19 A 35,35 0 0 0 19,54 C 30,40 50,70 89,54 A 35,35 0 0 0 54,19 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="38"
+                android:centerY="34"
+                android:gradientRadius="40"
+                android:type="radial">
+                <item android:color="#FFF176" android:offset="0.0" />
+                <item android:color="#FF9800" android:offset="0.4" />
+                <item android:color="#E65100" android:offset="0.75" />
+                <item android:color="#4A0000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Translucent Fluid Wave Divider -->
+    <path
+        android:pathData="M 23,46 C 36,32 64,72 85,58 C 76,72 42,66 23,46 Z"
+        android:fillColor="#40FFAA00" />
+    <path
+        android:pathData="M 28,38 C 42,26 62,58 80,46 C 68,60 42,50 28,38 Z"
+        android:fillColor="#4000D2FF" />
+
+    <!-- Sharp Fluid Curve Specular Ribbon -->
+    <path
+        android:pathData="M 22,50 Q 42,30 56,50 T 86,52"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FFFFFF"
+        android:fillColor="#00000000" />
+
+    <!-- Glass Specular Highlight Overlay -->
+    <path
+        android:pathData="M 54,19 A 35,35 0 1 1 53.99,19 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="19"
+                android:startY="19"
+                android:endX="89"
+                android:endY="89"
+                android:type="linear">
+                <item android:color="#A0FFFFFF" android:offset="0.0" />
+                <item android:color="#25E2D0FF" android:offset="0.45" />
+                <item android:color="#00FFFFFF" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Inner Glass Rim Outline -->
+    <path
+        android:pathData="M 54,19 A 35,35 0 1 1 53.99,19 Z"
+        android:strokeWidth="1.0"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="19"
+                android:startY="89"
+                android:endX="89"
+                android:endY="19"
+                android:type="linear">
+                <item android:color="#F000F0FF" android:offset="0.0" />
+                <item android:color="#50FFFFFF" android:offset="0.5" />
+                <item android:color="#F0FFB300" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>
