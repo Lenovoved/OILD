@@ -507,6 +507,9 @@ class NotificationCastListener : NotificationListenerService() {
         connectedAt = System.currentTimeMillis()
         reload()
         pollHandler.post(pollRunnable)
+        runCatching {
+            com.lenovoved.android.wavelet.WaveletAudioEngine.initAudioEffects(applicationContext)
+        }
     }
 
     override fun onListenerDisconnected() {

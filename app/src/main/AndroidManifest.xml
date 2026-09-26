@@ -68,5 +68,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- Wavelet global audio session receiver for media players -->
+        <receiver
+            android:name=".wavelet.AudioSessionReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.media.action.OPEN_AUDIO_EFFECT_CONTROL_SESSION" />
+                <action android:name="android.media.action.CLOSE_AUDIO_EFFECT_CONTROL_SESSION" />
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>

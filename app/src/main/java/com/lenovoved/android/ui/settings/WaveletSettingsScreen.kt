@@ -174,7 +174,7 @@ fun WaveletSettingsScreen(
                     checked = masterEnabled,
                     onCheckedChange = { checked ->
                         masterEnabled = checked
-                        prefs.edit().putBoolean("wavelet_master_enabled", checked).apply()
+                        prefs.edit().putBoolean("wavelet_master_enabled", checked).commit()
                         WaveletAudioEngine.applyAllSettings(context)
                     },
                 )
@@ -199,7 +199,7 @@ fun WaveletSettingsScreen(
                     checked = autoEqEnabled,
                     onCheckedChange = { checked ->
                         autoEqEnabled = checked
-                        prefs.edit().putBoolean("wavelet_autoeq_enabled", checked).apply()
+                        prefs.edit().putBoolean("wavelet_autoeq_enabled", checked).commit()
                         WaveletAudioEngine.applyAllSettings(context)
                     },
                 )
@@ -269,7 +269,7 @@ fun WaveletSettingsScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         selectedModelId = hp.id
-                                        prefs.edit().putString("wavelet_autoeq_model", hp.id).apply()
+                                        prefs.edit().putString("wavelet_autoeq_model", hp.id).commit()
                                         WaveletAudioEngine.applyAllSettings(context)
                                         showModelPicker = false
                                     }
@@ -318,13 +318,9 @@ fun WaveletSettingsScreen(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .clickable {
-                                bandLevels.forEachIndexed { i, state ->
-                                    state.floatValue = 0f
-                                    prefs.edit().putFloat("wavelet_eq_band_$i", 0f).apply()
-                                }
+                                WaveletAudioEngine.resetBands(context)
+                                bandLevels.forEach { it.floatValue = 0f }
                                 selectedPreset = "Плоский (Flat)"
-                                prefs.edit().putString("wavelet_eq_preset", selectedPreset).apply()
-                                WaveletAudioEngine.applyAllSettings(context)
                             }
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -365,15 +361,13 @@ fun WaveletSettingsScreen(
                             selected = isSelected,
                             onClick = {
                                 selectedPreset = presetName
-                                prefs.edit().putString("wavelet_eq_preset", presetName).apply()
                                 val presetValues = WaveletAudioEngine.EQ_PRESETS[presetName] ?: emptyList()
                                 presetValues.forEachIndexed { i, v ->
                                     if (i < bandLevels.size) {
                                         bandLevels[i].floatValue = v
-                                        prefs.edit().putFloat("wavelet_eq_band_$i", v).apply()
                                     }
                                 }
-                                WaveletAudioEngine.applyAllSettings(context)
+                                WaveletAudioEngine.savePreset(context, presetName, presetValues)
                             },
                             label = {
                                 Text(
@@ -432,9 +426,8 @@ fun WaveletSettingsScreen(
                             onValueChange = { newVal ->
                                 val rounded = (newVal * 2).roundToInt() / 2f
                                 bandState.floatValue = rounded
-                                prefs.edit().putFloat("wavelet_eq_band_$index", rounded).apply()
                                 selectedPreset = "Пользовательский"
-                                WaveletAudioEngine.applyAllSettings(context)
+                                WaveletAudioEngine.saveBandLevel(context, index, rounded)
                             },
                             valueRange = -10f..10f,
                             steps = 39,
@@ -473,7 +466,7 @@ fun WaveletSettingsScreen(
                     checked = bassEnabled,
                     onCheckedChange = { checked ->
                         bassEnabled = checked
-                        prefs.edit().putBoolean("wavelet_bass_enabled", checked).apply()
+                        prefs.edit().putBoolean("wavelet_bass_enabled", checked).commit()
                         WaveletAudioEngine.applyAllSettings(context)
                     },
                 )
@@ -495,7 +488,7 @@ fun WaveletSettingsScreen(
                                 selected = isSelected,
                                 onClick = {
                                     bassType = type
-                                    prefs.edit().putString("wavelet_bass_type", type).apply()
+                                    prefs.edit().putString("wavelet_bass_type", type).commit()
                                     WaveletAudioEngine.applyAllSettings(context)
                                 },
                                 label = {
@@ -529,7 +522,7 @@ fun WaveletSettingsScreen(
                         onValueChange = { newVal ->
                             val rounded = (newVal * 2).roundToInt() / 2f
                             bassGain = rounded
-                            prefs.edit().putFloat("wavelet_bass_gain", rounded).apply()
+                            prefs.edit().putFloat("wavelet_bass_gain", rounded).commit()
                             WaveletAudioEngine.applyAllSettings(context)
                         },
                         valueRange = 0f..10f,
@@ -548,7 +541,7 @@ fun WaveletSettingsScreen(
                         onValueChange = { newVal ->
                             val rounded = newVal.roundToInt().toFloat()
                             bassCutoff = rounded
-                            prefs.edit().putFloat("wavelet_bass_cutoff", rounded).apply()
+                            prefs.edit().putFloat("wavelet_bass_cutoff", rounded).commit()
                             WaveletAudioEngine.applyAllSettings(context)
                         },
                         valueRange = 40f..150f,
@@ -572,7 +565,7 @@ fun WaveletSettingsScreen(
                     checked = equalLoudnessOn,
                     onCheckedChange = { checked ->
                         equalLoudnessOn = checked
-                        prefs.edit().putBoolean("wavelet_equal_loudness_enabled", checked).apply()
+                        prefs.edit().putBoolean("wavelet_equal_loudness_enabled", checked).commit()
                     },
                 )
 
@@ -584,7 +577,7 @@ fun WaveletSettingsScreen(
                     checked = virtualizerOn,
                     onCheckedChange = { checked ->
                         virtualizerOn = checked
-                        prefs.edit().putBoolean("wavelet_virtualizer_enabled", checked).apply()
+                        prefs.edit().putBoolean("wavelet_virtualizer_enabled", checked).commit()
                         WaveletAudioEngine.applyAllSettings(context)
                     },
                 )
@@ -596,7 +589,7 @@ fun WaveletSettingsScreen(
                         onValueChange = { newVal ->
                             val rounded = newVal.roundToInt().toFloat()
                             virtualizerStrength = rounded
-                            prefs.edit().putFloat("wavelet_virtualizer_strength", rounded).apply()
+                            prefs.edit().putFloat("wavelet_virtualizer_strength", rounded).commit()
                             WaveletAudioEngine.applyAllSettings(context)
                         },
                         valueRange = 0f..100f,
@@ -617,7 +610,7 @@ fun WaveletSettingsScreen(
                     checked = reverbOn,
                     onCheckedChange = { checked ->
                         reverbOn = checked
-                        prefs.edit().putBoolean("wavelet_reverb_enabled", checked).apply()
+                        prefs.edit().putBoolean("wavelet_reverb_enabled", checked).commit()
                         WaveletAudioEngine.applyAllSettings(context)
                     },
                 )
@@ -641,7 +634,7 @@ fun WaveletSettingsScreen(
                                 selected = isSelected,
                                 onClick = {
                                     reverbPreset = presetId
-                                    prefs.edit().putInt("wavelet_reverb_preset", presetId).apply()
+                                    prefs.edit().putInt("wavelet_reverb_preset", presetId).commit()
                                     WaveletAudioEngine.applyAllSettings(context)
                                 },
                                 label = { Text(label, fontSize = 12.sp) },
@@ -668,7 +661,7 @@ fun WaveletSettingsScreen(
                     checked = limiterOn,
                     onCheckedChange = { checked ->
                         limiterOn = checked
-                        prefs.edit().putBoolean("wavelet_limiter_enabled", checked).apply()
+                        prefs.edit().putBoolean("wavelet_limiter_enabled", checked).commit()
                     },
                 )
 
@@ -680,7 +673,7 @@ fun WaveletSettingsScreen(
                     checked = islandSyncOn,
                     onCheckedChange = { checked ->
                         islandSyncOn = checked
-                        prefs.edit().putBoolean("wavelet_island_sync", checked).apply()
+                        prefs.edit().putBoolean("wavelet_island_sync", checked).commit()
                     },
                 )
 
@@ -692,7 +685,7 @@ fun WaveletSettingsScreen(
                     onValueChange = { newVal ->
                         val rounded = newVal.roundToInt().toFloat()
                         channelBalance = rounded
-                        prefs.edit().putFloat("wavelet_channel_balance", rounded).apply()
+                        prefs.edit().putFloat("wavelet_channel_balance", rounded).commit()
                     },
                     valueRange = -50f..50f,
                     steps = 19,
