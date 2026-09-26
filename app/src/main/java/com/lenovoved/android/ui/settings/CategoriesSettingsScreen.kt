@@ -222,7 +222,7 @@ fun CategoriesSettingsScreen(
 
                 SettingsToggleRow(
                     title = "Банковские чеки и платежи",
-                    subtitle = "Карточка успешной оплаты в стиле Wallet/Apple Pay, билеты на самолеты ✈ и поезда 🚆",
+                    subtitle = "Карточка успешной оплаты в стиле Wallet/Apple Pay, билеты на самолеты и поезда",
                     checked = paymentsOn,
                     onCheckedChange = { checked ->
                         paymentsOn = checked

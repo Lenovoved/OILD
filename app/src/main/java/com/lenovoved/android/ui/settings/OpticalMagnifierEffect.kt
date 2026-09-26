@@ -21,19 +21,12 @@ const val MAGNIFIER_SHADERS_SRC = """
     half4 main(float2 coords) {
         if (coords.x >= rect.x && coords.x <= rect.z && coords.y >= rect.y && coords.y <= rect.w) {
             float2 center = float2((rect.x + rect.z) * 0.5, (rect.y + rect.w) * 0.5);
-            float2 size = float2(rect.z - rect.x, rect.w - rect.y);
             float2 d = coords - center;
             
-            // Normalize distance to the ellipse bounds
-            float2 normD = d / (size * 0.5);
-            float dist = length(normD);
-            
-            if (dist < 1.0) {
-                // Spherical compression for natural-looking magnification at the center
-                float scale = 1.0 - (1.0 - 1.0 / zoom) * (1.0 - dist * dist);
-                float2 refractedCoords = center + d * scale;
-                return composable.eval(refractedCoords);
-            }
+            // Clean flat uniform magnification inside the entire bounding box
+            float scale = 1.0 / zoom;
+            float2 refractedCoords = center + d * scale;
+            return composable.eval(refractedCoords);
         }
         return composable.eval(coords);
     }

@@ -385,6 +385,25 @@ private fun OriginSpaceMainHub(
 
     var dialogRect by remember { mutableStateOf<android.graphics.RectF?>(null) }
 
+    var hasOpened by remember { mutableStateOf(false) }
+    LaunchedEffect(showInfoDialog) {
+        if (!showInfoDialog) {
+            hasOpened = false
+        }
+    }
+    if (showInfoDialog && popoutProgress >= 0.98f) {
+        hasOpened = true
+    }
+    val targetZoom = if (hasOpened) 1.25f else 1.0f
+    val animatedZoom by animateFloatAsState(
+        targetValue = targetZoom,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "MagnifierZoom"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -395,9 +414,9 @@ private fun OriginSpaceMainHub(
             modifier = Modifier
                 .fillMaxSize()
                 .opticalMagnifier(
-                    enabled = showInfoDialog,
+                    enabled = popoutProgress > 0.01f,
                     rect = dialogRect,
-                    zoom = 1.25f
+                    zoom = animatedZoom
                 )
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
