@@ -43,6 +43,7 @@ fun OriginOSSlider(
     value: Float,
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    onValueChangeFinished: (() -> Unit)? = null,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
     enabled: Boolean = true,
@@ -78,6 +79,7 @@ fun OriginOSSlider(
             Slider(
                 value = value,
                 onValueChange = onValueChange,
+                onValueChangeFinished = onValueChangeFinished,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = enabled,
                 valueRange = valueRange,

@@ -92,9 +92,8 @@ fun SurfacesSettingsScreen(
                     checked = displayStatusbar,
                     onCheckedChange = { checked ->
                         displayStatusbar = checked
-                        prefs.edit().putBoolean("cast_display_statusbar", checked).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putBoolean("cast_display_statusbar", checked).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
 
@@ -106,9 +105,8 @@ fun SurfacesSettingsScreen(
                     checked = displayLockscreen,
                     onCheckedChange = { checked ->
                         displayLockscreen = checked
-                        prefs.edit().putBoolean("cast_lockscreen_live_card", checked).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putBoolean("cast_lockscreen_live_card", checked).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
 
@@ -120,9 +118,8 @@ fun SurfacesSettingsScreen(
                     checked = displayAod,
                     onCheckedChange = { checked ->
                         displayAod = checked
-                        prefs.edit().putBoolean("cast_display_aod", checked).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putBoolean("cast_display_aod", checked).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
 
@@ -134,9 +131,8 @@ fun SurfacesSettingsScreen(
                     checked = displayWidget,
                     onCheckedChange = { checked ->
                         displayWidget = checked
-                        prefs.edit().putBoolean("cast_display_widget", checked).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putBoolean("cast_display_widget", checked).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
 
@@ -148,9 +144,8 @@ fun SurfacesSettingsScreen(
                     checked = displayVSuggestion,
                     onCheckedChange = { checked ->
                         displayVSuggestion = checked
-                        prefs.edit().putBoolean("cast_display_v_suggestion", checked).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putBoolean("cast_display_v_suggestion", checked).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
             }

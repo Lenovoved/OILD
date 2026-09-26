@@ -35,6 +35,7 @@ class PlaygroundService : Service() {
         const val ACTION_STOP = "ACTION_STOP"
         const val ACTION_CANCEL = "ACTION_CANCEL"
         const val ACTION_CANCEL_PACKAGE = "ACTION_CANCEL_PACKAGE"
+        const val ACTION_REFRESH = "ACTION_REFRESH"
         const val CHANNEL_ID = "lenovoved_service"
 
         /** Ids of cards currently on the island — used to detect a crowded island. */
@@ -53,6 +54,7 @@ class PlaygroundService : Service() {
     private var isForegroundActive = false
 
     private val activeIds = linkedSetOf<Int>()
+    private val lastPostIntents = ConcurrentHashMap<Int, Intent>()
     private val cardPackageMap = ConcurrentHashMap<Int, String>()
     private val originScenes = HashMap<Int, String>()
     private val originChangeRecord = HashMap<Int, Int>()
@@ -64,12 +66,32 @@ class PlaygroundService : Service() {
     // or it inherits stale fields (a ride ETA lingering under a flight card, etc.).
     private val sceneCurrentId = HashMap<String, Int>()
 
+    private val prefChangeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        refreshAllCards()
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         OriginIslandBuilder.grantScenes(this)
+        getSharedPreferences(PREFS_NAME, 0).registerOnSharedPreferenceChangeListener(prefChangeListener)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        runCatching {
+            getSharedPreferences(PREFS_NAME, 0).unregisterOnSharedPreferenceChangeListener(prefChangeListener)
+        }
+    }
+
+    fun refreshAllCards() {
+        mainHandler.post {
+            activeIds.toList().forEach { id ->
+                lastPostIntents[id]?.let { readAndPost(it) }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -81,6 +103,7 @@ class PlaygroundService : Service() {
         try {
             when (intent?.action) {
                 ACTION_START -> readAndPost(intent)
+                ACTION_REFRESH -> refreshAllCards()
                 ACTION_CANCEL -> cancelNotification(intent)
                 ACTION_CANCEL_PACKAGE -> cancelPackageCards(intent)
                 ACTION_STOP -> stopEverything()
@@ -146,6 +169,7 @@ class PlaygroundService : Service() {
     private fun readAndPost(intent: Intent) {
         val id = intent.getIntExtra("id", -1)
         if (id == -1) return
+        lastPostIntents[id] = Intent(intent)
 
         val sourcePkg = intent.getStringExtra("source_pkg") ?: intent.getStringExtra("pkg")
         if (!sourcePkg.isNullOrBlank()) {
@@ -189,18 +213,20 @@ class PlaygroundService : Service() {
 
         val isMedia = intent.getBooleanExtra("is_media", false)
         val isOngoing = intent.getBooleanExtra("is_ongoing", false)
-        val autoDismissSec = getSharedPreferences(PREFS_NAME, 0).getInt("cast_auto_dismiss_seconds", 0)
+        val globalPrefs = getSharedPreferences(PREFS_NAME, 0)
+        val autoDismissSec = globalPrefs.getInt("cast_auto_dismiss_seconds", 0)
+        val prefCapsuleShowTime = globalPrefs.getInt("cast_capsule_show_time", 0)
         val rawKeepDuration = intent.getIntExtra("oi_keep_duration", 0)
         val rawIslandShowTime = intent.getIntExtra("oi_island_show_time", 0)
         val effectiveDismissSec = when {
+            autoDismissSec > 0 -> autoDismissSec
             rawKeepDuration > 0 -> rawKeepDuration
             rawIslandShowTime > 0 -> rawIslandShowTime
-            autoDismissSec > 0 -> autoDismissSec
             isMedia && !isOngoing -> 10
             else -> 0
         }
-        val keepDuration = if (rawKeepDuration > 0) rawKeepDuration else if (!isOngoing) effectiveDismissSec else 0
-        val islandShowTime = if (rawIslandShowTime > 0) rawIslandShowTime else if (!isOngoing) effectiveDismissSec else 0
+        val keepDuration = if (autoDismissSec > 0) autoDismissSec else if (rawKeepDuration > 0) rawKeepDuration else if (!isOngoing) effectiveDismissSec else 0
+        val islandShowTime = if (autoDismissSec > 0) autoDismissSec else if (rawIslandShowTime > 0) rawIslandShowTime else if (!isOngoing) effectiveDismissSec else 0
         // Surfaces the card appears on: lockscreen|statusbar|AOD — NOT the plain notification-shade
         // bit (1). The SuperX post is a real, HIGH-importance notification under Origin Isle's own
         // identity; including the notification bit made it ALSO show as a duplicate shade entry
@@ -211,7 +237,6 @@ class PlaygroundService : Service() {
         // "Live card on lockscreen" setting (Cast tab), so every card behaves the same regardless of
         // what it passes in oi_displays. Strip whatever the card asked for, then re-add it only if the
         // user opted in.
-        val globalPrefs = getSharedPreferences(PREFS_NAME, 0)
 
         // Surfaces / Displays configuration from preferences
         val prefStatusbar = globalPrefs.getBoolean("cast_display_statusbar", true)
@@ -336,6 +361,7 @@ class PlaygroundService : Service() {
             sound = sound,
             dismissWhenKill = dismissWhenKill,
             islandShowTime = islandShowTime,
+            capsuleShowTime = prefCapsuleShowTime,
             forceShow = forceShow,
             showRightIcon = showRightIcon,
             showLeftIcon = showLeftIcon,
@@ -472,6 +498,7 @@ class PlaygroundService : Service() {
         val id = intent.getIntExtra("id", -1)
         if (id == -1) return
         cardPackageMap.remove(id)
+        lastPostIntents.remove(id)
         autoDismissTasks.remove(id)?.let { mainHandler.removeCallbacks(it) }
         val scene = originScenes.remove(id) ?: intent.getStringExtra("oi_scene")
         if (scene != null) {
@@ -496,6 +523,7 @@ class PlaygroundService : Service() {
 
     private fun stopEverything() {
         cardPackageMap.clear()
+        lastPostIntents.clear()
         autoDismissTasks.values.forEach { mainHandler.removeCallbacks(it) }
         autoDismissTasks.clear()
         val hadScenes = originScenes.isNotEmpty()

@@ -76,12 +76,6 @@ fun CategoriesSettingsScreen(
     var ignoreSilent by remember {
         mutableStateOf(prefs.getBoolean("cast_ignore_silent", false))
     }
-    var hideSourceNotification by remember {
-        mutableStateOf(prefs.getBoolean("cast_hide_source_notification", true))
-    }
-    var hideOriginShade by remember {
-        mutableStateOf(prefs.getBoolean("cast_hide_origin_shade", true))
-    }
 
     val dark = isSystemInDarkTheme()
     val dividerColor = if (dark) Color(0xFF2C2C2E) else Color(0xFFF0F0F2)
@@ -248,40 +242,6 @@ fun CategoriesSettingsScreen(
                         ignoreSilent = checked
                         prefs.edit().putBoolean("cast_ignore_silent", checked).apply()
                         NotificationCastListener.instance?.reload()
-                    },
-                )
-            }
-
-            // Notification Shade Duplicate Hiding
-            SettingsCard {
-                SettingsSectionHeader("Скрытие дубликатов из шторки", Icons.Default.NotificationsOff)
-
-                SettingsToggleRow(
-                    title = "Скрывать исходные уведомления",
-                    subtitle = "Автоматически удалять входящие сообщения и оповещения из обычной шторки Android после их отправки на Dynamic Island",
-                    checked = hideSourceNotification,
-                    onCheckedChange = { checked ->
-                        hideSourceNotification = checked
-                        prefs.edit().putBoolean("cast_hide_source_notification", checked).apply()
-                        NotificationCastListener.instance?.reload()
-                    },
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
-
-                SettingsToggleRow(
-                    title = "Скрывать дубликат Origin OS из шторки",
-                    subtitle = "Отключает показ системной копии карточки в раскрывающейся шторке (IslandNotify), отображая только Dynamic Island",
-                    checked = hideOriginShade,
-                    onCheckedChange = { checked ->
-                        hideOriginShade = checked
-                        prefs.edit()
-                            .putBoolean("cast_hide_origin_shade", checked)
-                            .putBoolean("cast_show_notify", !checked)
-                            .putBoolean("cast_island_notify", checked)
-                            .apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
                     },
                 )
             }

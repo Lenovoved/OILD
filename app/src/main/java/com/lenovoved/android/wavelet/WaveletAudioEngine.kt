@@ -5,77 +5,43 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.BassBoost
+import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.Equalizer
+import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.PresetReverb
 import android.media.audiofx.Virtualizer
 import android.os.Build
 import android.util.Log
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.log10
+import kotlin.math.pow
 
 /**
- * Wavelet Audio Processing Engine
- * Integrates Pittvandewitt/Wavelet architecture:
- * - 10-Band Graphic Equalizer with real-time hardware sync
- * - AutoEq database with headphone compensation curves
- * - Bass Tuner (Natural, Transient, Sustain)
- * - Equal Loudness ISO 226 compensation
- * - Virtualizer (Spatial Soundstage Expansion)
- * - Reverberation room acoustics
- * - Multi-session routing: Global output mix (Session 0) + dynamic player sessions
- * - Synchronous atomic preference commits to prevent setting loss
+ * Complete Wavelet Audio Processing Engine
+ * High-performance DSP pipeline implementing full Pittvandewitt/Wavelet architecture:
+ * - 10-Band Graphic Equalizer with DynamicsProcessing & HAL Equalizer fallback
+ * - AutoEq database with headphone compensation curves (17 models)
+ * - Bass Tuner (Natural, Transient, Sustain) with dynamic cutoff frequency (40-150Hz)
+ * - Equal Loudness ISO 226 acoustic loudness compensation
+ * - Virtualizer with binaural & auto soundstage expansion
+ * - True DynamicsProcessing Post-Gain Limiter (anti-clipping) + LoudnessEnhancer
+ * - True Channel Balance (L/R) gain attenuation
+ * - Reverberation room acoustics (Small Room, Medium Hall, Large Hall, Studio)
+ * - Multi-session routing: Global output mix (Session 0) + dynamic player sessions + anchor
+ * - Reactive OnSharedPreferenceChangeListener for 100% instant real-time updates
  * - Audio HAL warm anchor to prevent effect sleep/unload
+ * - Self-healing effect bundle with automatic resurrection on audio focus recovery
  */
 object WaveletAudioEngine {
     private const val TAG = "WaveletAudio"
     private const val PREFS_WAVELET = "wavelet_prefs"
-    private const val EFFECT_PRIORITY = 1000 // High priority to prevent OS / other apps overriding
+    private const val EFFECT_PRIORITY = 1000
 
-    class AudioEffectsBundle(
-        val sessionId: Int,
-        val packageName: String = "",
-    ) {
-        var equalizer: Equalizer? = null
-        var bassBoost: BassBoost? = null
-        var virtualizer: Virtualizer? = null
-        var presetReverb: PresetReverb? = null
-
-        fun init() {
-            runCatching {
-                equalizer = Equalizer(EFFECT_PRIORITY, sessionId).apply { enabled = true }
-            }.onFailure { Log.w(TAG, "Equalizer init error for session $sessionId: ${it.message}") }
-
-            runCatching {
-                bassBoost = BassBoost(EFFECT_PRIORITY, sessionId)
-            }.onFailure { Log.w(TAG, "BassBoost init error for session $sessionId: ${it.message}") }
-
-            runCatching {
-                virtualizer = Virtualizer(EFFECT_PRIORITY, sessionId)
-            }.onFailure { Log.w(TAG, "Virtualizer init error for session $sessionId: ${it.message}") }
-
-            runCatching {
-                presetReverb = PresetReverb(EFFECT_PRIORITY, sessionId)
-            }.onFailure { Log.w(TAG, "PresetReverb init error for session $sessionId: ${it.message}") }
-        }
-
-        fun release() {
-            runCatching { equalizer?.release() }
-            runCatching { bassBoost?.release() }
-            runCatching { virtualizer?.release() }
-            runCatching { presetReverb?.release() }
-            equalizer = null
-            bassBoost = null
-            virtualizer = null
-            presetReverb = null
-        }
-    }
-
-    private var globalBundle: AudioEffectsBundle? = null
-    private val activeSessions = ConcurrentHashMap<Int, AudioEffectsBundle>()
-    private var isReceiverRegistered = false
-    private var audioAnchor: AudioTrack? = null
+    val FREQS = floatArrayOf(32f, 64f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f)
 
     // 10 Standard Equalizer Frequencies (Hz)
     val EQ_BANDS = listOf(
@@ -124,6 +90,122 @@ object WaveletAudioEngine {
         "Акустика" to listOf(3f, 2.5f, 1.5f, 1.5f, 2f, 2.5f, 3f, 3f, 2.5f, 1.5f),
     )
 
+    class AudioEffectsBundle(
+        val sessionId: Int,
+        val packageName: String = "",
+    ) {
+        var dynamicsProcessing: DynamicsProcessing? = null
+        var equalizer: Equalizer? = null
+        var bassBoost: BassBoost? = null
+        var virtualizer: Virtualizer? = null
+        var presetReverb: PresetReverb? = null
+        var loudnessEnhancer: LoudnessEnhancer? = null
+
+        fun init() {
+            // 1. DynamicsProcessing: Only valid for specific audio session IDs (> 0) on Android
+            if (sessionId > 0) {
+                runCatching {
+                    val configBuilder = DynamicsProcessing.Config.Builder(
+                        DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                        2, // 2 channels (stereo)
+                        true, 10, // Pre-EQ: 10 bands
+                        false, 0, // MBC
+                        false, 0, // Post-EQ
+                        true      // Limiter
+                    )
+                    val config = configBuilder.build()
+                    val dp = DynamicsProcessing(EFFECT_PRIORITY, sessionId, config)
+                    dp.enabled = true
+                    dynamicsProcessing = dp
+                    Log.d(TAG, "DynamicsProcessing initialized for session $sessionId ($packageName)")
+                }.onFailure { Log.w(TAG, "DynamicsProcessing unavailable for session $sessionId: ${it.message}") }
+            }
+
+            // 2. Hardware Equalizer (Session 0 output mix + per-session hardware audio HAL)
+            runCatching {
+                val eq = Equalizer(EFFECT_PRIORITY, sessionId)
+                runCatching { eq.enabled = true }
+                equalizer = eq
+                Log.d(TAG, "Equalizer initialized for session $sessionId ($packageName), bands=${eq.numberOfBands}")
+            }.onFailure { Log.w(TAG, "Equalizer init error for session $sessionId: ${it.message}") }
+
+            // 3. BassBoost
+            runCatching {
+                val bb = BassBoost(EFFECT_PRIORITY, sessionId)
+                bassBoost = bb
+            }.onFailure { Log.w(TAG, "BassBoost init error for session $sessionId: ${it.message}") }
+
+            // 4. Virtualizer (Binaural & Auto 3D spatial expansion)
+            runCatching {
+                val virt = Virtualizer(EFFECT_PRIORITY, sessionId)
+                runCatching { virt.forceVirtualizationMode(Virtualizer.VIRTUALIZATION_MODE_BINAURAL) }
+                    .onFailure { runCatching { virt.forceVirtualizationMode(Virtualizer.VIRTUALIZATION_MODE_AUTO) } }
+                virtualizer = virt
+            }.onFailure { Log.w(TAG, "Virtualizer init error for session $sessionId: ${it.message}") }
+
+            // 5. PresetReverb (Room acoustics)
+            runCatching {
+                val pr = PresetReverb(EFFECT_PRIORITY, sessionId)
+                presetReverb = pr
+            }.onFailure { Log.w(TAG, "PresetReverb init error for session $sessionId: ${it.message}") }
+
+            // 6. LoudnessEnhancer (True limiter & post-gain boost without clipping)
+            runCatching {
+                val le = LoudnessEnhancer(sessionId)
+                runCatching { le.enabled = true }
+                loudnessEnhancer = le
+            }.onFailure { Log.w(TAG, "LoudnessEnhancer init error for session $sessionId: ${it.message}") }
+        }
+
+        /**
+         * Verifies whether the effect handles are still active and resurrects dead effects
+         * if the Android audio server or audio HAL restarted.
+         */
+        fun ensureAlive() {
+            var needReinit = false
+
+            if (equalizer == null || !runCatching { equalizer!!.hasControl() }.getOrDefault(false)) {
+                needReinit = true
+            }
+            if (sessionId > 0 && dynamicsProcessing == null) {
+                needReinit = true
+            }
+            if (bassBoost == null || !runCatching { bassBoost!!.hasControl() }.getOrDefault(false)) {
+                needReinit = true
+            }
+
+            if (needReinit) {
+                release()
+                init()
+            }
+        }
+
+        fun release() {
+            runCatching { dynamicsProcessing?.release() }
+            runCatching { equalizer?.release() }
+            runCatching { bassBoost?.release() }
+            runCatching { virtualizer?.release() }
+            runCatching { presetReverb?.release() }
+            runCatching { loudnessEnhancer?.release() }
+            dynamicsProcessing = null
+            equalizer = null
+            bassBoost = null
+            virtualizer = null
+            presetReverb = null
+            loudnessEnhancer = null
+        }
+    }
+
+    private var globalBundle: AudioEffectsBundle? = null
+    private val activeSessions = ConcurrentHashMap<Int, AudioEffectsBundle>()
+    private var isReceiverRegistered = false
+    private var audioAnchor: AudioTrack? = null
+    private var appContext: Context? = null
+
+    private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        appContext?.let { applyAllSettings(it) }
+    }
+
     fun getPrefs(context: Context): SharedPreferences {
         return context.applicationContext.getSharedPreferences(PREFS_WAVELET, Context.MODE_PRIVATE)
     }
@@ -162,10 +244,10 @@ object WaveletAudioEngine {
             val silence = ByteArray(bufferSize)
             track.write(silence, 0, silence.size)
             track.setLoopPoints(0, silence.size / 2, -1)
-            track.setVolume(0.0001f) // Effectively silent, keeps audio pipeline open
+            track.setVolume(0.0001f) // Inaudible, holds hardware pipeline open
             track.play()
             audioAnchor = track
-            Log.d(TAG, "Audio hardware anchor active")
+            Log.d(TAG, "Audio hardware anchor active (session ${track.audioSessionId})")
         }.onFailure { Log.w(TAG, "Audio anchor setup error: ${it.message}") }
     }
 
@@ -175,8 +257,12 @@ object WaveletAudioEngine {
      */
     @Synchronized
     fun initAudioEffects(context: Context) {
-        val appContext = context.applicationContext
-        val prefs = getPrefs(appContext)
+        val app = context.applicationContext
+        appContext = app
+        val prefs = getPrefs(app)
+
+        // Register reactive preference listener for instant real-time synchronization
+        prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
 
         // Register dynamic broadcast receiver for media apps
         if (!isReceiverRegistered) {
@@ -186,9 +272,9 @@ object WaveletAudioEngine {
                     addAction(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION)
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    appContext.registerReceiver(AudioSessionReceiver(), filter, Context.RECEIVER_EXPORTED)
+                    app.registerReceiver(AudioSessionReceiver(), filter, Context.RECEIVER_EXPORTED)
                 } else {
-                    appContext.registerReceiver(AudioSessionReceiver(), filter)
+                    app.registerReceiver(AudioSessionReceiver(), filter)
                 }
                 isReceiverRegistered = true
                 Log.d(TAG, "AudioSessionReceiver registered successfully")
@@ -203,10 +289,12 @@ object WaveletAudioEngine {
             val bundle = AudioEffectsBundle(0, "global")
             bundle.init()
             globalBundle = bundle
+        } else {
+            globalBundle?.ensureAlive()
         }
 
         // Apply all stored parameters immediately
-        applyAllSettings(appContext)
+        applyAllSettings(app)
     }
 
     /**
@@ -214,15 +302,18 @@ object WaveletAudioEngine {
      */
     fun attachSession(context: Context, sessionId: Int, packageName: String) {
         if (sessionId <= 0) return
-        val appContext = context.applicationContext
+        val app = context.applicationContext
 
         val existing = activeSessions[sessionId]
         if (existing == null) {
             val bundle = AudioEffectsBundle(sessionId, packageName)
             bundle.init()
             activeSessions[sessionId] = bundle
-            applyToBundle(bundle, getPrefs(appContext))
+            applyToBundle(bundle, getPrefs(app))
             Log.d(TAG, "Attached and configured audio session $sessionId for $packageName")
+        } else {
+            existing.ensureAlive()
+            applyToBundle(existing, getPrefs(app))
         }
     }
 
@@ -236,64 +327,187 @@ object WaveletAudioEngine {
     }
 
     /**
-     * Applies stored settings to a specific AudioEffectsBundle
+     * Applies stored settings to a specific AudioEffectsBundle across all DSP processors
      */
     private fun applyToBundle(bundle: AudioEffectsBundle, prefs: SharedPreferences) {
+        bundle.ensureAlive()
         val master = prefs.getBoolean("wavelet_master_enabled", true)
         try {
-            // 1. Equalizer
-            bundle.equalizer?.let { eq ->
-                eq.enabled = master
-                val bandsCount = eq.numberOfBands.toInt()
-                if (bandsCount > 0) {
-                    val minLevel = eq.bandLevelRange[0]
-                    val maxLevel = eq.bandLevelRange[1]
-                    val autoEqEnabled = prefs.getBoolean("wavelet_autoeq_enabled", true)
-                    val autoEqId = prefs.getString("wavelet_autoeq_model", "vivo_tws_4") ?: "vivo_tws_4"
-                    val profile = HEADPHONE_DATABASE.find { it.id == autoEqId }
+            // 1. Calculate Combined 10-Band Gains (User EQ + AutoEq + ISO 226 + Bass Tuner Curve)
+            val autoEqEnabled = prefs.getBoolean("wavelet_autoeq_enabled", true)
+            val autoEqId = prefs.getString("wavelet_autoeq_model", "vivo_tws_4") ?: "vivo_tws_4"
+            val profile = HEADPHONE_DATABASE.find { it.id == autoEqId }
 
-                    for (i in 0 until minOf(bandsCount, 10)) {
-                        val userDb = prefs.getFloat("wavelet_eq_band_$i", 0f)
-                        val autoEqDb = if (autoEqEnabled && profile != null) {
-                            profile.bandsCompensation.getOrElse(i) { 0f }
-                        } else {
-                            0f
+            // Equal Loudness (ISO 226) Fletcher-Munson contour
+            val equalLoudnessOn = prefs.getBoolean("wavelet_equal_loudness_enabled", false)
+            val isoOffsets = if (equalLoudnessOn) {
+                floatArrayOf(4.5f, 3.2f, 1.6f, 0.0f, 0.0f, 0.0f, 0.8f, 1.8f, 3.0f, 4.5f)
+            } else {
+                FloatArray(10) { 0f }
+            }
+
+            // Bass Tuner frequency curve shaping with dynamic cutoff calculation
+            val bassOn = master && prefs.getBoolean("wavelet_bass_enabled", true)
+            val bassGain = prefs.getFloat("wavelet_bass_gain", 4.0f)
+            val bassType = prefs.getString("wavelet_bass_type", "Natural") ?: "Natural"
+            val bassCutoff = prefs.getFloat("wavelet_bass_cutoff", 80f) // 40..150 Hz
+
+            val bassOffsets = FloatArray(10) { 0f }
+            if (bassOn && bassGain > 0f) {
+                // Smooth cutoff factor across lower bands: 32Hz, 64Hz, 125Hz, 250Hz
+                for (b in 0..3) {
+                    val freq = FREQS[b]
+                    val cutoffFactor = if (freq <= bassCutoff) {
+                        1.0f
+                    } else {
+                        // Smooth roll-off past cutoff
+                        (1.0f - ((freq - bassCutoff) / 100f)).coerceIn(0f, 1f)
+                    }
+
+                    val typeMultiplier = when (bassType) {
+                        "Transient" -> when (b) {
+                            1 -> 1.0f // 64 Hz punch
+                            2 -> 0.85f // 125 Hz punch
+                            0 -> 0.5f // 32 Hz
+                            else -> 0.25f
                         }
-                        val totalDb = (userDb + autoEqDb).coerceIn(-12f, 12f)
-                        val mb = (totalDb * 100f).toInt().coerceIn(minLevel.toInt(), maxLevel.toInt()).toShort()
-                        eq.setBandLevel(i.toShort(), mb)
+                        "Sustain" -> when (b) {
+                            0 -> 1.15f // 32 Hz sub rumble
+                            1 -> 0.95f // 64 Hz
+                            2 -> 0.4f
+                            else -> 0.1f
+                        }
+                        else -> when (b) { // Natural
+                            0 -> 0.85f
+                            1 -> 0.9f
+                            2 -> 0.6f
+                            else -> 0.2f
+                        }
+                    }
+
+                    bassOffsets[b] = (bassGain * typeMultiplier * cutoffFactor).coerceIn(0f, 10f)
+                }
+            }
+
+            val totalGains = FloatArray(10)
+            for (i in 0 until 10) {
+                val userDb = prefs.getFloat("wavelet_eq_band_$i", 0f)
+                val autoEqDb = if (autoEqEnabled && profile != null) profile.bandsCompensation.getOrElse(i) { 0f } else 0f
+                val isoDb = isoOffsets[i]
+                val bDb = bassOffsets[i]
+                totalGains[i] = if (master) (userDb + autoEqDb + isoDb + bDb).coerceIn(-12f, 12f) else 0f
+            }
+
+            // 2. Apply to DynamicsProcessing (Native 10 Bands + Limiter + Channel Balance)
+            bundle.dynamicsProcessing?.let { dp ->
+                dp.enabled = master
+                if (master) {
+                    // Pre-EQ 10 bands
+                    for (i in 0 until 10) {
+                        runCatching {
+                            dp.setPreEqBandAllChannelsTo(
+                                i,
+                                DynamicsProcessing.EqBand(true, FREQS[i], totalGains[i])
+                            )
+                        }
+                    }
+
+                    // Limiter (Prevents clipping & distortion)
+                    val limiterOn = prefs.getBoolean("wavelet_limiter_enabled", true)
+                    runCatching {
+                        dp.setLimiterAllChannelsTo(
+                            DynamicsProcessing.Limiter(
+                                true, // inUse
+                                limiterOn, // enabled
+                                0, // linkGroup
+                                2.0f, // attackTime (ms)
+                                60.0f, // releaseTime (ms)
+                                10.0f, // ratio
+                                -1.5f, // threshold (dB)
+                                0.0f  // postGain (dB)
+                            )
+                        )
+                    }
+
+                    // Channel Balance (L/R)
+                    val channelBalance = prefs.getFloat("wavelet_channel_balance", 0f) // -50..+50
+                    val leftGainDb = if (channelBalance > 0f) -channelBalance * 0.35f else 0.0f
+                    val rightGainDb = if (channelBalance < 0f) channelBalance * 0.35f else 0.0f
+                    runCatching {
+                        val ch0 = dp.getChannelByChannelIndex(0)
+                        ch0.inputGain = leftGainDb
+                        dp.setChannelTo(0, ch0)
+                        val ch1 = dp.getChannelByChannelIndex(1)
+                        ch1.inputGain = rightGainDb
+                        dp.setChannelTo(1, ch1)
                     }
                 }
             }
 
-            // 2. Bass boost
-            val bassOn = master && prefs.getBoolean("wavelet_bass_enabled", true)
-            bundle.bassBoost?.let { bb ->
-                bb.enabled = bassOn
-                if (bassOn) {
-                    val gain = prefs.getFloat("wavelet_bass_gain", 4.0f)
-                    val strength = ((gain / 10f) * 1000f).toInt().coerceIn(0, 1000).toShort()
-                    bb.setStrength(strength)
+            // 3. Apply to Hardware Equalizer (Frequency-matched mapping)
+            bundle.equalizer?.let { eq ->
+                runCatching { eq.enabled = master }
+                if (master) {
+                    val hwBands = eq.numberOfBands.toInt()
+                    if (hwBands > 0) {
+                        val minL = eq.bandLevelRange[0]
+                        val maxL = eq.bandLevelRange[1]
+
+                        val bandAcc = FloatArray(hwBands) { 0f }
+                        val bandCount = IntArray(hwBands) { 0 }
+
+                        for (i in 0 until 10) {
+                            val freqHz = FREQS[i]
+                            val rawBand = runCatching { eq.getBand((freqHz * 1000).toInt()).toInt() }.getOrDefault(-1)
+                            val hwBand = (if (rawBand >= 0) rawBand else (i * hwBands / 10)).coerceIn(0, hwBands - 1)
+                            bandAcc[hwBand] += totalGains[i]
+                            bandCount[hwBand] += 1
+                        }
+
+                        for (b in 0 until hwBands) {
+                            val targetDb = if (bandCount[b] > 0) bandAcc[b] / bandCount[b] else 0f
+                            val mb = (targetDb * 100f).toInt().coerceIn(minL.toInt(), maxL.toInt()).toShort()
+                            runCatching { eq.setBandLevel(b.toShort(), mb) }
+                        }
+                    }
                 }
             }
 
-            // 3. Virtualizer
+            // 4. Bass Boost (Hardware enhancement)
+            bundle.bassBoost?.let { bb ->
+                runCatching { bb.enabled = bassOn }
+                if (bassOn) {
+                    val strength = ((bassGain / 10f) * 1000f).toInt().coerceIn(0, 1000).toShort()
+                    runCatching { bb.setStrength(strength) }
+                }
+            }
+
+            // 5. Virtualizer (Spatial Soundstage Expansion)
             val virtOn = master && prefs.getBoolean("wavelet_virtualizer_enabled", false)
             bundle.virtualizer?.let { virt ->
-                virt.enabled = virtOn
+                runCatching { virt.enabled = virtOn }
                 if (virtOn) {
                     val strength = (prefs.getFloat("wavelet_virtualizer_strength", 35f) * 10f).toInt().coerceIn(0, 1000).toShort()
-                    virt.setStrength(strength)
+                    runCatching { virt.setStrength(strength) }
                 }
             }
 
-            // 4. Preset Reverb
+            // 6. Preset Reverb (Room Acoustics)
             val reverbOn = master && prefs.getBoolean("wavelet_reverb_enabled", false)
             bundle.presetReverb?.let { rev ->
-                rev.enabled = reverbOn
+                runCatching { rev.enabled = reverbOn }
                 if (reverbOn) {
                     val reverbPreset = prefs.getInt("wavelet_reverb_preset", 2).toShort()
-                    rev.preset = reverbPreset
+                    runCatching { rev.preset = reverbPreset }
+                }
+            }
+
+            // 7. Loudness Enhancer (True limiter & boost)
+            val limiterOn = master && prefs.getBoolean("wavelet_limiter_enabled", true)
+            bundle.loudnessEnhancer?.let { le ->
+                runCatching { le.enabled = limiterOn }
+                if (limiterOn) {
+                    runCatching { le.setTargetGain(600) } // 600 mB clean boost with limiter
                 }
             }
         } catch (t: Throwable) {
@@ -302,15 +516,14 @@ object WaveletAudioEngine {
     }
 
     /**
-     * Applies stored settings to both Global Session 0 and all active player sessions
-     * in real-time.
+     * Applies stored settings to both Global Session 0 and all active player sessions in real-time.
      */
     fun applyAllSettings(context: Context) {
-        val appContext = context.applicationContext
-        val prefs = getPrefs(appContext)
+        val app = context.applicationContext
+        val prefs = getPrefs(app)
 
         if (globalBundle == null) {
-            initAudioEffects(appContext)
+            initAudioEffects(app)
             return
         }
 
@@ -321,46 +534,52 @@ object WaveletAudioEngine {
         activeSessions.values.forEach { bundle ->
             applyToBundle(bundle, prefs)
         }
+
+        // Balance audio anchor stereo channels
+        val channelBalance = prefs.getFloat("wavelet_channel_balance", 0f)
+        val leftVol = if (channelBalance > 0) (1f - (channelBalance / 50f)).coerceIn(0.1f, 1f) else 1f
+        val rightVol = if (channelBalance < 0) (1f - (-channelBalance / 50f)).coerceIn(0.1f, 1f) else 1f
+        runCatching { audioAnchor?.setStereoVolume(leftVol * 0.0001f, rightVol * 0.0001f) }
     }
 
     /**
      * Synchronously persists a band change to disk and updates all audio sessions in real-time.
      */
     fun saveBandLevel(context: Context, bandIndex: Int, level: Float) {
-        val appContext = context.applicationContext
-        getPrefs(appContext).edit()
+        val app = context.applicationContext
+        getPrefs(app).edit()
             .putFloat("wavelet_eq_band_$bandIndex", level)
             .putString("wavelet_eq_preset", "Пользовательский")
             .commit()
-        applyAllSettings(appContext)
+        applyAllSettings(app)
     }
 
     /**
      * Synchronously persists a preset selection to disk and updates all audio sessions in real-time.
      */
     fun savePreset(context: Context, presetName: String, values: List<Float>) {
-        val appContext = context.applicationContext
-        val editor = getPrefs(appContext).edit()
+        val app = context.applicationContext
+        val editor = getPrefs(app).edit()
         editor.putString("wavelet_eq_preset", presetName)
         values.forEachIndexed { i, v ->
             editor.putFloat("wavelet_eq_band_$i", v)
         }
         editor.commit()
-        applyAllSettings(appContext)
+        applyAllSettings(app)
     }
 
     /**
      * Synchronously resets all equalizer bands to 0 dB.
      */
     fun resetBands(context: Context) {
-        val appContext = context.applicationContext
-        val editor = getPrefs(appContext).edit()
+        val app = context.applicationContext
+        val editor = getPrefs(app).edit()
         for (i in 0 until 10) {
             editor.putFloat("wavelet_eq_band_$i", 0f)
         }
         editor.putString("wavelet_eq_preset", "Плоский (Flat)")
         editor.commit()
-        applyAllSettings(appContext)
+        applyAllSettings(app)
     }
 
     fun release() {

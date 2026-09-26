@@ -108,9 +108,8 @@ fun TypographySettingsScreen(
                     selectedItem = notifStyle,
                     onSelect = { s ->
                         notifStyle = s
-                        prefs.edit().putString("notification_display_style", s).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putString("notification_display_style", s).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
             }
@@ -152,8 +151,8 @@ fun TypographySettingsScreen(
                     onValueChange = { newVal ->
                         capsuleCharsFloat = newVal
                         val rounded = newVal.roundToInt().coerceIn(1, 100)
-                        prefs.edit().putInt("notification_capsule_chars", rounded).apply()
-                        NotificationCastListener.instance?.reload()
+                        prefs.edit().putInt("notification_capsule_chars", rounded).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                     valueRange = 1f..100f,
                     steps = 98, // (100 - 1 - 1) = 98 steps for integer precision 1..100
@@ -208,8 +207,8 @@ fun TypographySettingsScreen(
                     onValueChange = { newVal ->
                         bodyCharsFloat = newVal
                         val rounded = newVal.roundToInt().coerceIn(1, 500)
-                        prefs.edit().putInt("notification_body_chars", rounded).apply()
-                        NotificationCastListener.instance?.reload()
+                        prefs.edit().putInt("notification_body_chars", rounded).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                     valueRange = 1f..500f,
                     startIcon = Icons.Default.ShortText,

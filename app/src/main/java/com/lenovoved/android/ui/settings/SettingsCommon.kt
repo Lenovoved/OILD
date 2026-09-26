@@ -211,6 +211,7 @@ fun SettingsSliderRow(
     maxLabel: String = "",
     startIcon: ImageVector? = null,
     endIcon: ImageVector? = null,
+    onValueChangeFinished: (() -> Unit)? = null,
 ) {
     val dark = isSystemInDarkTheme()
     val labelColor = if (dark) Color.White else Color(0xFF1C1C1E)
@@ -239,6 +240,7 @@ fun SettingsSliderRow(
         OriginOSSlider(
             value = value,
             onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
             valueRange = valueRange,
             steps = steps,
             activeColor = Color(0xFF0066FF),

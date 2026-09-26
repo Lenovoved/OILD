@@ -113,10 +113,14 @@ import com.lenovoved.android.ui.PREFS_NAME
 import com.lenovoved.android.ui.openAutoStartSettings
 import com.lenovoved.android.ui.rememberResumeTick
 import com.lenovoved.android.ui.samples.IslandSamples
+import androidx.compose.material.icons.filled.Tune
 import com.lenovoved.android.ui.settings.CategoriesSettingsScreen
 import com.lenovoved.android.ui.settings.ColorsThemeSettingsScreen
 import com.lenovoved.android.ui.settings.DurationSettingsScreen
 import com.lenovoved.android.ui.settings.PermissionsSettingsScreen
+import com.lenovoved.android.ui.settings.SettingsCard
+import com.lenovoved.android.ui.settings.SettingsSectionHeader
+import com.lenovoved.android.ui.settings.SettingsToggleRow
 import com.lenovoved.android.ui.settings.SurfacesSettingsScreen
 import com.lenovoved.android.ui.settings.TypographySettingsScreen
 import com.lenovoved.android.ui.settings.WaveletSettingsScreen
@@ -270,13 +274,39 @@ private fun OriginSpaceMainHub(
     val infoBtnBg = if (showInfoDialog) Color(0xFF0066FF) else (if (dark) Color(0xFF1F1F21) else Color(0xFFEBEBEF))
     val infoBtnTint = if (showInfoDialog) Color.White else Color(0xFF8E8E93)
 
-    // Count active categories
-    val normalOn = prefs.getBoolean("cast_normal_notifications", false) || prefs.getBoolean("cast_notifications", false)
-    val messengerOn = prefs.getBoolean("cast_messenger_notifications", false)
-    val navOn = prefs.getBoolean("cast_nav_notifications", false)
-    val mediaOn = prefs.getBoolean("cast_media_sessions", false)
-    val sportsOn = prefs.getBoolean("cast_sports_enabled", false)
-    val paymentsOn = prefs.getBoolean("cast_payments_enabled", false)
+    // Active categories state
+    var normalOn by remember {
+        mutableStateOf(prefs.getBoolean("cast_normal_notifications", false) || prefs.getBoolean("cast_notifications", false))
+    }
+    var messengerOn by remember {
+        mutableStateOf(prefs.getBoolean("cast_messenger_notifications", false))
+    }
+    var navOn by remember {
+        mutableStateOf(prefs.getBoolean("cast_nav_notifications", false))
+    }
+    var mediaOn by remember {
+        mutableStateOf(prefs.getBoolean("cast_media_sessions", false))
+    }
+    var sportsOn by remember {
+        mutableStateOf(prefs.getBoolean("cast_sports_enabled", false))
+    }
+    var paymentsOn by remember {
+        mutableStateOf(prefs.getBoolean("cast_payments_enabled", false))
+    }
+    var ignoreSilent by remember {
+        mutableStateOf(prefs.getBoolean("cast_ignore_silent", false))
+    }
+
+    LaunchedEffect(tick.intValue) {
+        normalOn = prefs.getBoolean("cast_normal_notifications", false) || prefs.getBoolean("cast_notifications", false)
+        messengerOn = prefs.getBoolean("cast_messenger_notifications", false)
+        navOn = prefs.getBoolean("cast_nav_notifications", false)
+        mediaOn = prefs.getBoolean("cast_media_sessions", false)
+        sportsOn = prefs.getBoolean("cast_sports_enabled", false)
+        paymentsOn = prefs.getBoolean("cast_payments_enabled", false)
+        ignoreSilent = prefs.getBoolean("cast_ignore_silent", false)
+    }
+
     val activeCategoriesCount = listOf(normalOn, messengerOn, navOn, mediaOn, sportsOn, paymentsOn).count { it }
 
     val postNotifLauncher = rememberLauncherForActivityResult(
@@ -300,12 +330,6 @@ private fun OriginSpaceMainHub(
 
     val group1Items = remember {
         listOf(
-            HubItem(
-                icon = Icons.Default.Notifications,
-                iconColor = Color(0xFF3B82F6),
-                title = "Категории уведомлений",
-                onClick = { onNavigateTo(SettingsSubScreen.CATEGORIES) },
-            ),
             HubItem(
                 icon = Icons.Default.Schedule,
                 iconColor = Color(0xFF8B5CF6),
@@ -404,6 +428,128 @@ private fun OriginSpaceMainHub(
                     )
                 }
             }
+
+            // Main Notification Sources Card
+            SettingsCard {
+                SettingsSectionHeader("Основные источники", Icons.Default.Notifications)
+
+                SettingsToggleRow(
+                    title = "Обычные уведомления",
+                    subtitle = "Системные оповещения, загрузки, будильники, таймеры и установленные приложения",
+                    checked = normalOn,
+                    onCheckedChange = { checked ->
+                        normalOn = checked
+                        prefs.edit()
+                            .putBoolean("cast_normal_notifications", checked)
+                            .putBoolean("cast_notifications", checked)
+                            .apply()
+                        NotificationCastListener.onCategorySettingsChanged(context, "normal", checked)
+                        if (checked) {
+                            NotificationCastListener.forceRebind(context)
+                            NotificationCastListener.instance?.recastAll()
+                        }
+                    },
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
+
+                SettingsToggleRow(
+                    title = "Уведомления мессенджеров",
+                    subtitle = "Telegram, WhatsApp, Viber, VK, SMS, диалоги и чаты",
+                    checked = messengerOn,
+                    onCheckedChange = { checked ->
+                        messengerOn = checked
+                        prefs.edit().putBoolean("cast_messenger_notifications", checked).apply()
+                        NotificationCastListener.onCategorySettingsChanged(context, "messenger", checked)
+                        if (checked) {
+                            NotificationCastListener.forceRebind(context)
+                            NotificationCastListener.instance?.recastAll()
+                        }
+                    },
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
+
+                SettingsToggleRow(
+                    title = "Уведомления навигаторов",
+                    subtitle = "Google Карты, Яндекс Навигатор, Яндекс Карты, 2ГИС, дорожные подсказки",
+                    checked = navOn,
+                    onCheckedChange = { checked ->
+                        navOn = checked
+                        prefs.edit().putBoolean("cast_nav_notifications", checked).apply()
+                        NotificationCastListener.onCategorySettingsChanged(context, "navigation", checked)
+                        if (checked) {
+                            NotificationCastListener.forceRebind(context)
+                            NotificationCastListener.instance?.recastAll()
+                        }
+                    },
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
+
+                SettingsToggleRow(
+                    title = "Уведомления плеером",
+                    subtitle = "Медиаплеер OriginOS, обложки треков, управление воспроизведением (пауза, след/пред)",
+                    checked = mediaOn,
+                    onCheckedChange = { checked ->
+                        mediaOn = checked
+                        prefs.edit().putBoolean("cast_media_sessions", checked).apply()
+                        NotificationCastListener.onMediaSettingsChanged(context, checked)
+                        if (checked) {
+                            NotificationCastListener.forceRebind(context)
+                            NotificationCastListener.instance?.recastAll()
+                        }
+                    },
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Specialized Events Card
+            SettingsCard {
+                SettingsSectionHeader("Специализированные события", Icons.Default.Tune)
+
+                SettingsToggleRow(
+                    title = "Спортивные события и Live Score",
+                    subtitle = "Счета футбольных матчей в реальном времени, эмблемы клубов и минуты (FotMob, SofaScore, FlashScore)",
+                    checked = sportsOn,
+                    onCheckedChange = { checked ->
+                        sportsOn = checked
+                        prefs.edit().putBoolean("cast_sports_enabled", checked).apply()
+                        NotificationCastListener.instance?.reload()
+                        NotificationCastListener.instance?.recastAll()
+                    },
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
+
+                SettingsToggleRow(
+                    title = "Банковские чеки и платежи",
+                    subtitle = "Карточка успешной оплаты в стиле Wallet/Apple Pay, билеты на самолеты ✈ и поезда 🚆",
+                    checked = paymentsOn,
+                    onCheckedChange = { checked ->
+                        paymentsOn = checked
+                        prefs.edit().putBoolean("cast_payments_enabled", checked).apply()
+                        NotificationCastListener.instance?.reload()
+                        NotificationCastListener.instance?.recastAll()
+                    },
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
+
+                SettingsToggleRow(
+                    title = "Игнорировать беззвучные уведомления",
+                    subtitle = "Не показывать на островке события из каналов, где отключены звук и вибрация",
+                    checked = ignoreSilent,
+                    onCheckedChange = { checked ->
+                        ignoreSilent = checked
+                        prefs.edit().putBoolean("cast_ignore_silent", checked).apply()
+                        NotificationCastListener.instance?.reload()
+                    },
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Group 1
             SettingsCardGroup(

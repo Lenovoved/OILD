@@ -260,6 +260,25 @@ class NotificationCastListener : NotificationListenerService() {
         }
 
         /**
+         * Real-time sync when Island settings (duration, typography, colors, surfaces) change.
+         */
+        fun notifySettingsChanged(context: Context) {
+            val listener = instance
+            if (listener != null) {
+                listener.lastCastPostTime.clear()
+                listener.lastMediaState.clear()
+                listener.reload()
+                listener.recastAll()
+            } else {
+                forceRebind(context)
+            }
+            val intent = Intent(context, PlaygroundService::class.java).apply {
+                action = PlaygroundService.ACTION_REFRESH
+            }
+            runCatching { context.startService(intent) }
+        }
+
+        /**
          * Undo a [forceRebind] that only got halfway — the process can die between its two calls,
          * and DONT_KILL_APP only stops PackageManager from killing us, not OriginOS. A component
          * left DISABLED persists across reboots and never binds again, while the grant it's checked
@@ -501,11 +520,22 @@ class NotificationCastListener : NotificationListenerService() {
         }
     }
 
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        lastCastPostTime.clear()
+        lastMediaState.clear()
+        reload()
+        recastAll()
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
         instance = this
         connectedAt = System.currentTimeMillis()
+        getSharedPreferences(PREFS, 0).registerOnSharedPreferenceChangeListener(prefListener)
+        lastCastPostTime.clear()
+        lastMediaState.clear()
         reload()
+        recastAll()
         pollHandler.post(pollRunnable)
         runCatching {
             com.lenovoved.android.wavelet.WaveletAudioEngine.initAudioEffects(applicationContext)
@@ -514,6 +544,9 @@ class NotificationCastListener : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
+        runCatching {
+            getSharedPreferences(PREFS, 0).unregisterOnSharedPreferenceChangeListener(prefListener)
+        }
         if (instance === this) instance = null
         connectedAt = 0L
         pollHandler.removeCallbacks(pollRunnable)
@@ -550,11 +583,8 @@ class NotificationCastListener : NotificationListenerService() {
     fun recastAll(): Int {
         val notifs = activeNotifications ?: return 0
         lastMediaState.clear()
+        lastCastPostTime.clear()
         notifs.forEach { sbn ->
-            // Force it past the [lastCastPostTime] redelivery guard: this is a deliberate replay, not
-            // a redelivery, and it's the one way to bring back a message/payment card the user
-            // dismissed from the island while its source notification is still on the device.
-            lastCastPostTime.remove(sbn.key)
             if (sbn.packageName != packageName) runCatching { onNotificationPosted(sbn) }
         }
         return notifs.size
@@ -691,9 +721,6 @@ class NotificationCastListener : NotificationListenerService() {
             }
             log(sbn, "cast — messenger", true)
             GenericCard.post(applicationContext, sbn, isLive = false, category = "messenger")
-            if (prefs.getBoolean("cast_hide_source_notification", true)) {
-                runCatching { cancelNotification(sbn.key) }
-            }
             return
         }
 
@@ -717,9 +744,6 @@ class NotificationCastListener : NotificationListenerService() {
                 }
                 castPayment(sbn, it)
                 log(sbn, "cast — payment", true)
-                if (prefs.getBoolean("cast_hide_source_notification", true)) {
-                    runCatching { cancelNotification(sbn.key) }
-                }
                 return
             }
         }
@@ -741,9 +765,6 @@ class NotificationCastListener : NotificationListenerService() {
         }
         log(sbn, "cast — $kind", true)
         GenericCard.post(applicationContext, sbn, isLive, category = "normal")
-        if (!isLive && !isOngoing && prefs.getBoolean("cast_hide_source_notification", true)) {
-            runCatching { cancelNotification(sbn.key) }
-        }
     }
 
     /** The user-visible name of [pkg], or the package name if it can't be resolved. */

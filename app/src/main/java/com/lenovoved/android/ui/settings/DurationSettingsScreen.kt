@@ -111,9 +111,8 @@ fun DurationSettingsScreen(
                     selectedItem = autoDismissSec,
                     onSelect = { sec ->
                         autoDismissSec = sec
-                        prefs.edit().putInt("cast_auto_dismiss_seconds", sec).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putInt("cast_auto_dismiss_seconds", sec).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
 
@@ -125,7 +124,8 @@ fun DurationSettingsScreen(
                     onValueChange = { newVal ->
                         val s = newVal.roundToInt()
                         autoDismissSec = s
-                        prefs.edit().putInt("cast_auto_dismiss_seconds", s).apply()
+                        prefs.edit().putInt("cast_auto_dismiss_seconds", s).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                     valueRange = 0f..60f,
                     steps = 59,
@@ -162,7 +162,8 @@ fun DurationSettingsScreen(
                     selectedItem = capsuleShowTime,
                     onSelect = { sec ->
                         capsuleShowTime = sec
-                        prefs.edit().putInt("cast_capsule_show_time", sec).apply()
+                        prefs.edit().putInt("cast_capsule_show_time", sec).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
 
@@ -174,7 +175,8 @@ fun DurationSettingsScreen(
                     onValueChange = { newVal ->
                         val s = newVal.roundToInt()
                         capsuleShowTime = s
-                        prefs.edit().putInt("cast_capsule_show_time", s).apply()
+                        prefs.edit().putInt("cast_capsule_show_time", s).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                     valueRange = 0f..30f,
                     steps = 29,
@@ -196,9 +198,8 @@ fun DurationSettingsScreen(
                     checked = showTimestamp,
                     onCheckedChange = { checked ->
                         showTimestamp = checked
-                        prefs.edit().putBoolean("notification_show_timestamp", checked).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putBoolean("notification_show_timestamp", checked).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
             }

@@ -566,6 +566,7 @@ fun WaveletSettingsScreen(
                     onCheckedChange = { checked ->
                         equalLoudnessOn = checked
                         prefs.edit().putBoolean("wavelet_equal_loudness_enabled", checked).commit()
+                        WaveletAudioEngine.applyAllSettings(context)
                     },
                 )
 
@@ -662,6 +663,7 @@ fun WaveletSettingsScreen(
                     onCheckedChange = { checked ->
                         limiterOn = checked
                         prefs.edit().putBoolean("wavelet_limiter_enabled", checked).commit()
+                        WaveletAudioEngine.applyAllSettings(context)
                     },
                 )
 
@@ -674,6 +676,8 @@ fun WaveletSettingsScreen(
                     onCheckedChange = { checked ->
                         islandSyncOn = checked
                         prefs.edit().putBoolean("wavelet_island_sync", checked).commit()
+                        WaveletAudioEngine.applyAllSettings(context)
+                        com.lenovoved.android.service.NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
 
@@ -686,6 +690,7 @@ fun WaveletSettingsScreen(
                         val rounded = newVal.roundToInt().toFloat()
                         channelBalance = rounded
                         prefs.edit().putFloat("wavelet_channel_balance", rounded).commit()
+                        WaveletAudioEngine.applyAllSettings(context)
                     },
                     valueRange = -50f..50f,
                     steps = 19,

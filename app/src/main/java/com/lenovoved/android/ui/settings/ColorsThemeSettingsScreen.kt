@@ -81,9 +81,8 @@ fun ColorsThemeSettingsScreen(
                     checked = soundEnabled,
                     onCheckedChange = { checked ->
                         soundEnabled = checked
-                        prefs.edit().putBoolean("cast_sound", checked).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putBoolean("cast_sound", checked).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
             }
@@ -105,9 +104,8 @@ fun ColorsThemeSettingsScreen(
                     selectedColor = capsuleBgColor,
                     onColorSelect = { c ->
                         capsuleBgColor = c
-                        prefs.edit().putInt("cast_capsule_bg_color", c).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putInt("cast_capsule_bg_color", c).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
             }
@@ -135,9 +133,8 @@ fun ColorsThemeSettingsScreen(
                     selectedItem = rightTemplateOverride,
                     onSelect = { tmpl ->
                         rightTemplateOverride = tmpl
-                        prefs.edit().putString("cast_right_template", tmpl).apply()
-                        NotificationCastListener.instance?.reload()
-                        NotificationCastListener.instance?.recastAll()
+                        prefs.edit().putString("cast_right_template", tmpl).commit()
+                        NotificationCastListener.notifySettingsChanged(context)
                     },
                 )
             }
