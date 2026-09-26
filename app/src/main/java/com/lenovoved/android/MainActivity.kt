@@ -92,7 +92,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.lenovoved.android.cards.SportsCard
-import com.lenovoved.android.equalizer.WaveletEqualizerScreen
 import com.lenovoved.android.island.OriginIslandBuilder
 import com.lenovoved.android.island.PlaygroundService
 import com.lenovoved.android.service.NotificationCastListener
@@ -161,7 +160,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun OriginSpaceApp() {
     val context = LocalContext.current
-    var selectedBottomTab by remember { mutableIntStateOf(0) } // 0: Управление, 1: Эквалайзер
     var activeSubScreen by remember { mutableStateOf<SettingsSubScreen?>(null) }
 
     // Grant Island scenes on launch
@@ -176,91 +174,44 @@ private fun OriginSpaceApp() {
                 .padding(top = paddingValues.calculateTopPadding()),
         ) {
             AnimatedContent(
-                targetState = selectedBottomTab,
+                targetState = activeSubScreen,
                 transitionSpec = {
-                    if (targetState > initialState) {
+                    if (targetState != null) {
                         (slideInHorizontally(
-                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            animationSpec = tween(320, easing = FastOutSlowInEasing),
                             initialOffsetX = { fullWidth -> fullWidth },
                         ) + fadeIn(animationSpec = tween(300))).togetherWith(
                             slideOutHorizontally(
-                                animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                targetOffsetX = { fullWidth -> -fullWidth / 3 },
+                                animationSpec = tween(280, easing = FastOutSlowInEasing),
+                                targetOffsetX = { fullWidth -> -fullWidth / 4 },
                             ) + fadeOut(animationSpec = tween(200)),
                         )
                     } else {
                         (slideInHorizontally(
                             animationSpec = tween(300, easing = FastOutSlowInEasing),
-                            initialOffsetX = { fullWidth -> -fullWidth },
+                            initialOffsetX = { fullWidth -> -fullWidth / 4 },
                         ) + fadeIn(animationSpec = tween(300))).togetherWith(
                             slideOutHorizontally(
-                                animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                targetOffsetX = { fullWidth -> fullWidth / 3 },
+                                animationSpec = tween(320, easing = FastOutSlowInEasing),
+                                targetOffsetX = { fullWidth -> fullWidth },
                             ) + fadeOut(animationSpec = tween(200)),
                         )
                     }
                 },
-                label = "TabTransition",
-            ) { tabIndex ->
-                if (tabIndex == 0) {
-                    AnimatedContent(
-                        targetState = activeSubScreen,
-                        transitionSpec = {
-                            if (targetState != null) {
-                                (slideInHorizontally(
-                                    animationSpec = tween(320, easing = FastOutSlowInEasing),
-                                    initialOffsetX = { fullWidth -> fullWidth },
-                                ) + fadeIn(animationSpec = tween(300))).togetherWith(
-                                    slideOutHorizontally(
-                                        animationSpec = tween(280, easing = FastOutSlowInEasing),
-                                        targetOffsetX = { fullWidth -> -fullWidth / 4 },
-                                    ) + fadeOut(animationSpec = tween(200)),
-                                )
-                            } else {
-                                (slideInHorizontally(
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                    initialOffsetX = { fullWidth -> -fullWidth / 4 },
-                                ) + fadeIn(animationSpec = tween(300))).togetherWith(
-                                    slideOutHorizontally(
-                                        animationSpec = tween(320, easing = FastOutSlowInEasing),
-                                        targetOffsetX = { fullWidth -> fullWidth },
-                                    ) + fadeOut(animationSpec = tween(200)),
-                                )
-                            }
-                        },
-                        label = "SubScreenTransition",
-                    ) { subScreen ->
-                        when (subScreen) {
-                            SettingsSubScreen.CATEGORIES -> CategoriesSettingsScreen(onBack = { activeSubScreen = null })
-                            SettingsSubScreen.DURATION -> DurationSettingsScreen(onBack = { activeSubScreen = null })
-                            SettingsSubScreen.SURFACES -> SurfacesSettingsScreen(onBack = { activeSubScreen = null })
-                            SettingsSubScreen.TYPOGRAPHY -> TypographySettingsScreen(onBack = { activeSubScreen = null })
-                            SettingsSubScreen.COLORS_THEME -> ColorsThemeSettingsScreen(onBack = { activeSubScreen = null })
-                            SettingsSubScreen.PERMISSIONS -> PermissionsSettingsScreen(onBack = { activeSubScreen = null })
-                            null -> OriginSpaceMainHub(
-                                onNavigateTo = { screen -> activeSubScreen = screen },
-                            )
-                        }
-                    }
-                } else {
-                    WaveletEqualizerScreen()
+                label = "SubScreenTransition",
+            ) { subScreen ->
+                when (subScreen) {
+                    SettingsSubScreen.CATEGORIES -> CategoriesSettingsScreen(onBack = { activeSubScreen = null })
+                    SettingsSubScreen.DURATION -> DurationSettingsScreen(onBack = { activeSubScreen = null })
+                    SettingsSubScreen.SURFACES -> SurfacesSettingsScreen(onBack = { activeSubScreen = null })
+                    SettingsSubScreen.TYPOGRAPHY -> TypographySettingsScreen(onBack = { activeSubScreen = null })
+                    SettingsSubScreen.COLORS_THEME -> ColorsThemeSettingsScreen(onBack = { activeSubScreen = null })
+                    SettingsSubScreen.PERMISSIONS -> PermissionsSettingsScreen(onBack = { activeSubScreen = null })
+                    null -> OriginSpaceMainHub(
+                        onNavigateTo = { screen -> activeSubScreen = screen },
+                    )
                 }
             }
-
-            // Floating Bottom Pill Dock
-            FloatingBottomPill(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 16.dp),
-                selectedTab = selectedBottomTab,
-                onSelectTab = { tabIndex ->
-                    selectedBottomTab = tabIndex
-                    if (tabIndex == 1) {
-                        activeSubScreen = null
-                    }
-                },
-            )
         }
     }
 }
@@ -322,7 +273,7 @@ private fun OriginSpaceMainHub(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 18.dp),
+                .padding(top = 0.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -706,140 +657,6 @@ private fun PhoneIslandMockup() {
                 color = Color(0xFFCCD1D7),
                 letterSpacing = 1.sp,
             )
-        }
-    }
-}
-
-/**
- * Translucent Glass Floating Pill Bar at the bottom of the screen (Управление / Эквалайзер).
- */
-@Composable
-private fun FloatingBottomPill(
-    modifier: Modifier = Modifier,
-    selectedTab: Int,
-    onSelectTab: (Int) -> Unit,
-) {
-    var tab0Center by remember { mutableStateOf(Offset.Unspecified) }
-    var tab1Center by remember { mutableStateOf(Offset.Unspecified) }
-    var isMagnifying0 by remember { mutableStateOf(false) }
-    var isMagnifying1 by remember { mutableStateOf(false) }
-
-    val tab0Scale by animateFloatAsState(targetValue = if (selectedTab == 0 || isMagnifying0) 1.20f else 1.0f, label = "Tab0Scale")
-    val tab1Scale by animateFloatAsState(targetValue = if (selectedTab == 1 || isMagnifying1) 1.20f else 1.0f, label = "Tab1Scale")
-
-    Surface(
-        modifier = modifier
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(32.dp),
-                spotColor = Color(0x20000000),
-            )
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.85f),
-                shape = RoundedCornerShape(32.dp),
-            ),
-        shape = RoundedCornerShape(32.dp),
-        color = Color.White.copy(alpha = 0.75f),
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 6.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .onGloballyPositioned { coordinates ->
-                        tab0Center = coordinates.positionInRoot() + Offset(coordinates.size.width / 2f, coordinates.size.height / 2f)
-                    }
-                    .then(
-                        if (isMagnifying0 && tab0Center.isSpecified) {
-                            Modifier.magnifier(
-                                sourceCenter = { tab0Center },
-                                magnifierCenter = { tab0Center - Offset(0f, 110f) },
-                                zoom = 1.4f
-                            )
-                        } else Modifier
-                    )
-                    .graphicsLayer {
-                        scaleX = tab0Scale
-                        scaleY = tab0Scale
-                    }
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(
-                        if (selectedTab == 0) Color(0xFF1677FF).copy(alpha = 0.15f) else Color.Transparent,
-                    )
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                isMagnifying0 = true
-                                try {
-                                    awaitRelease()
-                                } finally {
-                                    isMagnifying0 = false
-                                }
-                            },
-                            onTap = { onSelectTab(0) }
-                        )
-                    }
-                    .padding(horizontal = 22.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Управление",
-                    fontSize = 14.5.sp,
-                    fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
-                    color = if (selectedTab == 0) Color(0xFF1677FF) else Color(0xFF334155),
-                )
-            }
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Box(
-                modifier = Modifier
-                    .onGloballyPositioned { coordinates ->
-                        tab1Center = coordinates.positionInRoot() + Offset(coordinates.size.width / 2f, coordinates.size.height / 2f)
-                    }
-                    .then(
-                        if (isMagnifying1 && tab1Center.isSpecified) {
-                            Modifier.magnifier(
-                                sourceCenter = { tab1Center },
-                                magnifierCenter = { tab1Center - Offset(0f, 110f) },
-                                zoom = 1.4f
-                            )
-                        } else Modifier
-                    )
-                    .graphicsLayer {
-                        scaleX = tab1Scale
-                        scaleY = tab1Scale
-                    }
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(
-                        if (selectedTab == 1) Color(0xFF1677FF).copy(alpha = 0.15f) else Color.Transparent,
-                    )
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                isMagnifying1 = true
-                                try {
-                                    awaitRelease()
-                                } finally {
-                                    isMagnifying1 = false
-                                }
-                            },
-                            onTap = { onSelectTab(1) }
-                        )
-                    }
-                    .padding(horizontal = 22.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Эквалайзер",
-                    fontSize = 14.5.sp,
-                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
-                    color = if (selectedTab == 1) Color(0xFF1677FF) else Color(0xFF334155),
-                )
-            }
         }
     }
 }
