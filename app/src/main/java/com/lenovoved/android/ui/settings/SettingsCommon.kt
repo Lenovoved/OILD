@@ -54,15 +54,15 @@ fun SettingsTopBar(
     onBack: () -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
-    val btnBg = if (dark) Color(0xFF1E293B) else Color.White
-    val titleColor = if (dark) Color(0xFFF8FAFC) else Color(0xFF1E293B)
-    val subColor = if (dark) Color(0xFF94A3B8) else Color(0xFF64748B)
+    val btnBg = if (dark) Color(0xFF1C1C1E) else Color.White
+    val titleColor = if (dark) Color.White else Color(0xFF1C1C1E)
+    val subColor = if (dark) Color(0xFF8E8E93) else Color(0xFF6B7280)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -71,8 +71,7 @@ fun SettingsTopBar(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(btnBg)
-                .shadow(1.dp, CircleShape),
+                .background(btnBg),
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -83,7 +82,7 @@ fun SettingsTopBar(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontSize = 19.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = titleColor,
             )
@@ -104,21 +103,21 @@ fun SettingsCard(
     content: @Composable () -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
-    val cardBg = if (dark) Color(0xFF1E293B) else Color.White
+    val cardBg = if (dark) Color(0xFF1C1C1E) else Color.White
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 2.dp,
-                shape = RoundedCornerShape(22.dp),
-                spotColor = if (dark) Color(0x33000000) else Color(0x12000000),
+                elevation = if (dark) 0.dp else 1.dp,
+                shape = RoundedCornerShape(26.dp),
+                spotColor = Color(0x0A000000),
             ),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(containerColor = cardBg),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
         ) {
             content()
         }
@@ -129,10 +128,10 @@ fun SettingsCard(
 fun SettingsSectionHeader(
     title: String,
     icon: ImageVector? = null,
-    iconTint: Color = Color(0xFF1677FF),
+    iconTint: Color = Color(0xFF0066FF),
 ) {
     val dark = isSystemInDarkTheme()
-    val titleColor = if (dark) Color(0xFFF8FAFC) else Color(0xFF1E293B)
+    val titleColor = if (dark) Color.White else Color(0xFF1C1C1E)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -165,8 +164,8 @@ fun SettingsToggleRow(
     modifier: Modifier = Modifier,
 ) {
     val dark = isSystemInDarkTheme()
-    val titleColor = if (dark) Color(0xFFF1F5F9) else Color(0xFF1E293B)
-    val subColor = if (dark) Color(0xFF94A3B8) else Color(0xFF64748B)
+    val titleColor = if (dark) Color.White else Color(0xFF1C1C1E)
+    val subColor = if (dark) Color(0xFF8E8E93) else Color(0xFF6B7280)
 
     Row(
         modifier = modifier
@@ -210,10 +209,12 @@ fun SettingsSliderRow(
     valueDisplay: String,
     minLabel: String = "",
     maxLabel: String = "",
+    startIcon: ImageVector? = null,
+    endIcon: ImageVector? = null,
 ) {
     val dark = isSystemInDarkTheme()
-    val labelColor = if (dark) Color(0xFFE2E8F0) else Color(0xFF334155)
-    val inactiveTrackColor = if (dark) Color(0xFF334155) else Color(0xFFE2E8F0)
+    val labelColor = if (dark) Color.White else Color(0xFF1C1C1E)
+    val inactiveTrackColor = if (dark) Color(0xFF2C2C2E) else Color(0xFFEAEAEE)
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
@@ -234,6 +235,7 @@ fun SettingsSliderRow(
                 color = Color(0xFF0066FF),
             )
         }
+        Spacer(modifier = Modifier.height(2.dp))
         OriginOSSlider(
             value = value,
             onValueChange = onValueChange,
@@ -241,14 +243,16 @@ fun SettingsSliderRow(
             steps = steps,
             activeColor = Color(0xFF0066FF),
             inactiveColor = inactiveTrackColor,
+            startIcon = startIcon,
+            endIcon = endIcon,
         )
         if (minLabel.isNotBlank() || maxLabel.isNotBlank()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(text = minLabel, fontSize = 11.sp, color = Color(0xFF94A3B8))
-                Text(text = maxLabel, fontSize = 11.sp, color = Color(0xFF94A3B8))
+                Text(text = minLabel, fontSize = 11.sp, color = Color(0xFF8E8E93))
+                Text(text = maxLabel, fontSize = 11.sp, color = Color(0xFF8E8E93))
             }
         }
     }
@@ -261,8 +265,8 @@ fun <T> SettingsChipsRow(
     onSelect: (T) -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
-    val unselectedBg = if (dark) Color(0xFF334155) else Color(0xFFF1F5F9)
-    val unselectedLabel = if (dark) Color(0xFFE2E8F0) else Color(0xFF334155)
+    val unselectedBg = if (dark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
+    val unselectedLabel = if (dark) Color(0xFFE5E5EA) else Color(0xFF3A3A3C)
 
     Row(
         modifier = Modifier
@@ -283,7 +287,7 @@ fun <T> SettingsChipsRow(
                     )
                 },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(0xFF2563EB),
+                    selectedContainerColor = Color(0xFF0066FF),
                     selectedLabelColor = Color.White,
                     containerColor = unselectedBg,
                     labelColor = unselectedLabel,

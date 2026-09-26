@@ -18,8 +18,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.HourglassFull
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Timelapse
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -129,6 +132,8 @@ fun DurationSettingsScreen(
                     valueDisplay = if (autoDismissSec == 0) "Не скрывать" else "$autoDismissSec сек",
                     minLabel = "0 сек",
                     maxLabel = "60 сек",
+                    startIcon = Icons.Default.HourglassTop,
+                    endIcon = Icons.Default.HourglassFull,
                 )
             }
 
@@ -176,6 +181,8 @@ fun DurationSettingsScreen(
                     valueDisplay = if (capsuleShowTime == 0) "По умолчанию" else "$capsuleShowTime сек",
                     minLabel = "0 сек",
                     maxLabel = "30 сек",
+                    startIcon = Icons.Default.Timer,
+                    endIcon = Icons.Default.Timelapse,
                 )
             }
 

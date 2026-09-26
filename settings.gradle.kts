@@ -22,7 +22,7 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Origin OS"
+rootProject.name = "Пространство Origin"
 
 
 include(":app")

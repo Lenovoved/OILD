@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Origin OS</string>
-    <string name="channel_name">Origin OS</string>
-    <string name="channel_desc">Канал для живых обновлений Origin OS</string>
+    <string name="app_name">Пространство Origin</string>
+    <string name="channel_name">Пространство Origin</string>
+    <string name="channel_desc">Канал для живых обновлений Пространство Origin</string>
 </resources>
 

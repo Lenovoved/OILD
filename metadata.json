@@ -1,5 +1,5 @@
 {
-  "name": "Origin OS",
+  "name": "Пространство Origin",
   "description": "Origin OS notification streaming and interactive dynamic island control",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

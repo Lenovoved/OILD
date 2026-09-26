@@ -2,6 +2,7 @@ package com.lenovoved.android.ui.settings
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -55,6 +56,9 @@ fun SurfacesSettingsScreen(
         mutableStateOf(prefs.getBoolean("cast_display_v_suggestion", false))
     }
 
+    val dark = isSystemInDarkTheme()
+    val dividerColor = if (dark) Color(0xFF2C2C2E) else Color(0xFFF0F0F2)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -77,7 +81,7 @@ fun SurfacesSettingsScreen(
                     text = "Протокол SuperX (битовая маска `displays`) определяет, на каких поверхностях системы vivo отображается островное событие. Вы можете независимо включать и отключать вывод на экран блокировки, выключенный экран AOD, рабочий стол или статус-бар.",
                     fontSize = 12.5.sp,
                     lineHeight = 17.sp,
-                    color = Color(0xFF64748B),
+                    color = if (dark) Color(0xFF8E8E93) else Color(0xFF64748B),
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -94,7 +98,7 @@ fun SurfacesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Экран блокировки (Lock Screen)",
@@ -108,7 +112,7 @@ fun SurfacesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Always-On Display (AOD)",
@@ -122,7 +126,7 @@ fun SurfacesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Виджет рабочего стола",
@@ -136,7 +140,7 @@ fun SurfacesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Подсказки Jovi / V-Suggestion",

@@ -2,6 +2,7 @@ package com.lenovoved.android.ui.settings
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FormatPaint
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.ShortText
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,6 +67,8 @@ fun TypographySettingsScreen(
 
     val capsuleChars = capsuleCharsFloat.roundToInt()
     val bodyChars = bodyCharsFloat.roundToInt()
+    val dark = isSystemInDarkTheme()
+    val textColor = if (dark) Color.White else Color(0xFF1C1C1E)
 
     Column(
         modifier = Modifier
@@ -123,12 +128,12 @@ fun TypographySettingsScreen(
                         text = "Лимит символов в заголовке / капсуле",
                         fontSize = 13.5.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF334155),
+                        color = textColor,
                     )
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFE0EDFF))
+                            .background(if (dark) Color(0x330066FF) else Color(0xFFE0EDFF))
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                     ) {
                         Text(
@@ -152,15 +157,17 @@ fun TypographySettingsScreen(
                     },
                     valueRange = 1f..100f,
                     steps = 98, // (100 - 1 - 1) = 98 steps for integer precision 1..100
+                    startIcon = Icons.Default.TextFields,
+                    endIcon = Icons.Default.TextFields,
                 )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("1 (мин)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
-                    Text("24 (стандарт)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
-                    Text("100 (макс)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                    Text("1 (мин)", fontSize = 11.5.sp, color = Color(0xFF8E8E93))
+                    Text("24 (стандарт)", fontSize = 11.5.sp, color = Color(0xFF8E8E93))
+                    Text("100 (макс)", fontSize = 11.5.sp, color = Color(0xFF8E8E93))
                 }
             }
 
@@ -177,12 +184,12 @@ fun TypographySettingsScreen(
                         text = "Лимит текста сообщения",
                         fontSize = 13.5.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF334155),
+                        color = textColor,
                     )
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFE0EDFF))
+                            .background(if (dark) Color(0x330066FF) else Color(0xFFE0EDFF))
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                     ) {
                         Text(
@@ -205,15 +212,17 @@ fun TypographySettingsScreen(
                         NotificationCastListener.instance?.reload()
                     },
                     valueRange = 1f..500f,
+                    startIcon = Icons.Default.ShortText,
+                    endIcon = Icons.Default.Notes,
                 )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("1 (мин)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
-                    Text("120 (стандарт)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
-                    Text("500 (полный)", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                    Text("1 (мин)", fontSize = 11.5.sp, color = Color(0xFF8E8E93))
+                    Text("120 (стандарт)", fontSize = 11.5.sp, color = Color(0xFF8E8E93))
+                    Text("500 (полный)", fontSize = 11.5.sp, color = Color(0xFF8E8E93))
                 }
             }
 

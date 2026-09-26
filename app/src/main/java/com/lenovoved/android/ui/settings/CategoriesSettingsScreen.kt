@@ -83,6 +83,9 @@ fun CategoriesSettingsScreen(
         mutableStateOf(prefs.getBoolean("cast_hide_origin_shade", true))
     }
 
+    val dark = isSystemInDarkTheme()
+    val dividerColor = if (dark) Color(0xFF2C2C2E) else Color(0xFFF0F0F2)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -105,13 +108,11 @@ fun CategoriesSettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val dark = isSystemInDarkTheme()
-
             Text(
                 text = "Пространство Origin",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (dark) Color(0xFFF8FAFC) else Color(0xFF1A1C1E),
+                color = if (dark) Color.White else Color(0xFF1C1C1E),
                 textAlign = TextAlign.Center,
             )
 
@@ -121,7 +122,7 @@ fun CategoriesSettingsScreen(
                 text = "Интеграция с динамическим островом OriginOS. Каждый параметр вынесен в отдельную страницу для детальной настройки.",
                 fontSize = 13.5.sp,
                 lineHeight = 18.sp,
-                color = if (dark) Color(0xFF94A3B8) else Color(0xFF5F6368),
+                color = if (dark) Color(0xFF8E8E93) else Color(0xFF6B7280),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
@@ -155,7 +156,7 @@ fun CategoriesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Уведомления мессенджеров",
@@ -172,7 +173,7 @@ fun CategoriesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Уведомления навигаторов",
@@ -189,7 +190,7 @@ fun CategoriesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Уведомления плеером",
@@ -223,7 +224,7 @@ fun CategoriesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Банковские чеки и платежи",
@@ -237,7 +238,7 @@ fun CategoriesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Игнорировать беззвучные уведомления",
@@ -266,7 +267,7 @@ fun CategoriesSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = dividerColor, thickness = 0.8.dp)
 
                 SettingsToggleRow(
                     title = "Скрывать дубликат Origin OS из шторки",
@@ -312,8 +313,8 @@ private fun PhoneIslandMockup() {
                 ambientColor = Color(0x08000000),
             )
             .clip(RoundedCornerShape(28.dp))
-            .background(if (dark) Color(0xFF1E293B) else Color.White)
-            .border(1.5.dp, if (dark) Color(0xFF334155) else Color(0xFFE5E8EB), RoundedCornerShape(28.dp)),
+            .background(if (dark) Color(0xFF1C1C1E) else Color.White)
+            .border(1.5.dp, if (dark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA), RoundedCornerShape(28.dp)),
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,6 +69,9 @@ fun PermissionsSettingsScreen(
         batteryGranted = isBatteryUnrestricted(context)
     }
 
+    val dark = isSystemInDarkTheme()
+    val dividerColor = if (dark) Color(0xFF2C2C2E) else Color(0xFFF0F0F2)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -90,7 +94,7 @@ fun PermissionsSettingsScreen(
                     text = "Для бесперебойной трансляции уведомлений на островок в оболочке vivo OriginOS требуются следующие системные разрешения:",
                     fontSize = 12.5.sp,
                     lineHeight = 17.sp,
-                    color = Color(0xFF64748B),
+                    color = if (dark) Color(0xFF8E8E93) else Color(0xFF64748B),
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -104,7 +108,7 @@ fun PermissionsSettingsScreen(
                     },
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFF1F5F9))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = dividerColor, thickness = 0.8.dp)
 
                 PermissionItemRow(
                     title = "Работа в фоне без ограничений",

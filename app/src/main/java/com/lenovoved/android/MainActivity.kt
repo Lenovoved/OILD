@@ -51,17 +51,23 @@ import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FormatPaint
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.outlined.Info
@@ -113,6 +119,8 @@ import com.lenovoved.android.ui.settings.DurationSettingsScreen
 import com.lenovoved.android.ui.settings.PermissionsSettingsScreen
 import com.lenovoved.android.ui.settings.SurfacesSettingsScreen
 import com.lenovoved.android.ui.settings.TypographySettingsScreen
+import com.lenovoved.android.ui.settings.WaveletSettingsScreen
+import com.lenovoved.android.wavelet.WaveletAudioEngine
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -124,6 +132,7 @@ enum class SettingsSubScreen {
     TYPOGRAPHY,
     COLORS_THEME,
     PERMISSIONS,
+    WAVELET,
 }
 
 class MainActivity : ComponentActivity() {
@@ -131,6 +140,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        WaveletAudioEngine.initAudioEffects(this)
 
         when (intent?.getStringExtra("autofire")) {
             "football" -> SportsCard.post(this, "ARS", 1, "MAN", 1, "65'")
@@ -213,6 +224,7 @@ private fun OriginSpaceApp() {
                     SettingsSubScreen.TYPOGRAPHY -> TypographySettingsScreen(onBack = { activeSubScreen = null })
                     SettingsSubScreen.COLORS_THEME -> ColorsThemeSettingsScreen(onBack = { activeSubScreen = null })
                     SettingsSubScreen.PERMISSIONS -> PermissionsSettingsScreen(onBack = { activeSubScreen = null })
+                    SettingsSubScreen.WAVELET -> WaveletSettingsScreen(onBack = { activeSubScreen = null })
                     null -> OriginSpaceMainHub(
                         onNavigateTo = { screen -> activeSubScreen = screen },
                     )
@@ -246,17 +258,17 @@ private fun OriginSpaceMainHub(
     )
 
     val dark = isSystemInDarkTheme()
-    val mainHeaderTextColor = if (dark) Color(0xFFF8FAFC) else Color(0xFF1A1C1E)
-    val cardContainerColor = if (dark) Color(0xFF1E293B) else Color.White
-    val dividerColor = if (dark) Color(0xFF334155) else Color(0xFFF1F5F9)
-    val modalGlassBg = if (dark) Color(0xFF1E293B).copy(alpha = 0.95f) else Color.White.copy(alpha = 0.94f)
-    val modalBorderColor = if (dark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val modalTitleColor = if (dark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val modalSubtitleColor = if (dark) Color(0xFFCBD5E1) else Color(0xFF334155)
-    val modalDevBoxBg = if (dark) Color(0x223B82F6) else Color(0x0C2563EB)
-    val modalDevTextColor = if (dark) Color(0xFF60A5FA) else Color(0xFF2563EB)
-    val infoBtnBg = if (showInfoDialog) Color(0xFF2563EB) else (if (dark) Color(0xFF334155) else Color(0xFFE9ECF0))
-    val infoBtnTint = if (showInfoDialog) Color.White else (if (dark) Color(0xFFF8FAFC) else Color(0xFF49454F))
+    val mainHeaderTextColor = if (dark) Color.White else Color(0xFF1C1C1E)
+    val cardContainerColor = if (dark) Color(0xFF1C1C1E) else Color.White
+    val dividerColor = if (dark) Color(0xFF2C2C2E) else Color(0xFFF0F0F2)
+    val modalGlassBg = if (dark) Color(0xFF1C1C1E).copy(alpha = 0.98f) else Color.White.copy(alpha = 0.96f)
+    val modalBorderColor = if (dark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
+    val modalTitleColor = if (dark) Color.White else Color(0xFF1C1C1E)
+    val modalSubtitleColor = if (dark) Color(0xFF8E8E93) else Color(0xFF6B7280)
+    val modalDevBoxBg = if (dark) Color(0x220066FF) else Color(0x0C0066FF)
+    val modalDevTextColor = if (dark) Color(0xFF60A5FA) else Color(0xFF0066FF)
+    val infoBtnBg = if (showInfoDialog) Color(0xFF0066FF) else (if (dark) Color(0xFF1F1F21) else Color(0xFFEBEBEF))
+    val infoBtnTint = if (showInfoDialog) Color.White else Color(0xFF8E8E93)
 
     // Count active categories
     val normalOn = prefs.getBoolean("cast_normal_notifications", false) || prefs.getBoolean("cast_notifications", false)
@@ -286,30 +298,86 @@ private fun OriginSpaceMainHub(
         }
     }
 
+    val group1Items = remember {
+        listOf(
+            HubItem(
+                icon = Icons.Default.Notifications,
+                iconColor = Color(0xFF3B82F6),
+                title = "Категории уведомлений",
+                onClick = { onNavigateTo(SettingsSubScreen.CATEGORIES) },
+            ),
+            HubItem(
+                icon = Icons.Default.Schedule,
+                iconColor = Color(0xFF8B5CF6),
+                title = "Время отображения",
+                onClick = { onNavigateTo(SettingsSubScreen.DURATION) },
+            ),
+            HubItem(
+                icon = Icons.Default.Layers,
+                iconColor = Color(0xFF10B981),
+                title = "Поверхности отображения",
+                onClick = { onNavigateTo(SettingsSubScreen.SURFACES) },
+            ),
+            HubItem(
+                icon = Icons.Default.FormatPaint,
+                iconColor = Color(0xFF0EA5E9),
+                title = "Стиль и лимиты символов",
+                onClick = { onNavigateTo(SettingsSubScreen.TYPOGRAPHY) },
+            ),
+        )
+    }
+
+    val group2Items = remember {
+        listOf(
+            HubItem(
+                icon = Icons.Default.ColorLens,
+                iconColor = Color(0xFFF59E0B),
+                title = "Цветовая палитра и темы",
+                onClick = { onNavigateTo(SettingsSubScreen.COLORS_THEME) },
+            ),
+            HubItem(
+                icon = Icons.Default.GraphicEq,
+                iconColor = Color(0xFF0066FF),
+                title = "Эквалайзер Wavelet",
+                onClick = { onNavigateTo(SettingsSubScreen.WAVELET) },
+            ),
+            HubItem(
+                icon = Icons.Default.FilterList,
+                iconColor = Color(0xFF10B981),
+                title = "Фильтр приложений",
+                onClick = { showAppFilterSheet = true },
+            ),
+            HubItem(
+                icon = Icons.Default.Security,
+                iconColor = Color(0xFF0066FF),
+                title = "Системные разрешения",
+                onClick = { onNavigateTo(SettingsSubScreen.PERMISSIONS) },
+            ),
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        // Main screen background content (remains normal size without whole-screen zoom)
+        // Main screen background content
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
-                .padding(horizontal = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .padding(horizontal = 16.dp),
         ) {
-            // Top Header
+            // Header Row: Centered title "Пространство Origin", info icon button on right
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 8.dp, start = 8.dp, end = 8.dp),
-                contentAlignment = Alignment.Center,
+                    .padding(top = 18.dp, bottom = 20.dp, start = 4.dp, end = 4.dp),
             ) {
                 Text(
                     text = "Пространство Origin",
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = mainHeaderTextColor,
                     textAlign = TextAlign.Center,
@@ -337,114 +405,21 @@ private fun OriginSpaceMainHub(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Group 1
+            SettingsCardGroup(
+                items = group1Items,
+                containerColor = cardContainerColor,
+                dividerColor = dividerColor,
+            )
 
-            // Settings Navigation Menu Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(28.dp),
-                        spotColor = if (dark) Color(0x33000000) else Color(0x0F000000),
-                    ),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = cardContainerColor),
-            ) {
-                Column {
-                    // 1. Categories
-                    SettingsHubRow(
-                        icon = Icons.Default.Notifications,
-                        iconColor = Color(0xFF2563EB),
-                        title = "Категории уведомлений",
-                        onClick = { onNavigateTo(SettingsSubScreen.CATEGORIES) },
-                    )
+            Spacer(modifier = Modifier.height(14.dp))
 
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 58.dp),
-                        color = dividerColor,
-                        thickness = 0.8.dp,
-                    )
-
-                    // 2. Duration
-                    SettingsHubRow(
-                        icon = Icons.Default.Schedule,
-                        iconColor = Color(0xFF8B5CF6),
-                        title = "Время отображения",
-                        onClick = { onNavigateTo(SettingsSubScreen.DURATION) },
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 58.dp),
-                        color = dividerColor,
-                        thickness = 0.8.dp,
-                    )
-
-                    // 3. Surfaces
-                    SettingsHubRow(
-                        icon = Icons.Default.Layers,
-                        iconColor = Color(0xFF10B981),
-                        title = "Поверхности отображения",
-                        onClick = { onNavigateTo(SettingsSubScreen.SURFACES) },
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 58.dp),
-                        color = dividerColor,
-                        thickness = 0.8.dp,
-                    )
-
-                    // 4. Typography & Style
-                    SettingsHubRow(
-                        icon = Icons.Default.FormatPaint,
-                        iconColor = Color(0xFF2563EB),
-                        title = "Стиль и лимиты символов",
-                        onClick = { onNavigateTo(SettingsSubScreen.TYPOGRAPHY) },
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 58.dp),
-                        color = dividerColor,
-                        thickness = 0.8.dp,
-                    )
-
-                    // 5. Colors & Theme
-                    SettingsHubRow(
-                        icon = Icons.Default.ColorLens,
-                        iconColor = Color(0xFFF59E0B),
-                        title = "Цветовая палитра и темы",
-                        onClick = { onNavigateTo(SettingsSubScreen.COLORS_THEME) },
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 58.dp),
-                        color = dividerColor,
-                        thickness = 0.8.dp,
-                    )
-
-                    // 6. App Filter
-                    SettingsHubRow(
-                        icon = Icons.Default.FilterList,
-                        iconColor = Color(0xFF10B981),
-                        title = "Фильтр приложений",
-                        onClick = { showAppFilterSheet = true },
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 58.dp),
-                        color = dividerColor,
-                        thickness = 0.8.dp,
-                    )
-
-                    // 7. Permissions
-                    SettingsHubRow(
-                        icon = Icons.Default.Security,
-                        iconColor = Color(0xFF0EA5E9),
-                        title = "Системные разрешения",
-                        onClick = { onNavigateTo(SettingsSubScreen.PERMISSIONS) },
-                    )
-                }
-            }
+            // Group 2
+            SettingsCardGroup(
+                items = group2Items,
+                containerColor = cardContainerColor,
+                dividerColor = dividerColor,
+            )
 
             Spacer(modifier = Modifier.height(120.dp))
         }
@@ -473,18 +448,18 @@ private fun OriginSpaceMainHub(
                         alpha = popoutProgress.coerceIn(0f, 1f)
                         transformOrigin = TransformOrigin(0.92f, 0.0f)
                     }
-                    .width(320.dp)
+                    .width(250.dp)
                     .shadow(
                         elevation = 16.dp,
-                        shape = RoundedCornerShape(26.dp),
+                        shape = RoundedCornerShape(24.dp),
                         spotColor = Color(0x30000000),
                     )
                     .border(
-                        width = 1.5.dp,
+                        width = 1.2.dp,
                         color = modalBorderColor,
-                        shape = RoundedCornerShape(26.dp),
+                        shape = RoundedCornerShape(24.dp),
                     )
-                    .clip(RoundedCornerShape(26.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(modalGlassBg),
             ) {
                 // Close button top-right
@@ -492,29 +467,29 @@ private fun OriginSpaceMainHub(
                     onClick = { showInfoDialog = false },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(10.dp)
-                        .size(32.dp),
+                        .padding(8.dp)
+                        .size(28.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Закрыть",
                         tint = if (dark) Color(0xFF94A3B8) else Color(0xFF64748B),
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
 
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 22.dp),
+                        .padding(horizontal = 14.dp, vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     // App Icon Badge
                     Box(
                         modifier = Modifier
-                            .size(54.dp)
-                            .shadow(6.dp, RoundedCornerShape(16.dp), spotColor = Color(0x252563EB))
-                            .clip(RoundedCornerShape(16.dp))
+                            .size(46.dp)
+                            .shadow(4.dp, RoundedCornerShape(14.dp), spotColor = Color(0x252563EB))
+                            .clip(RoundedCornerShape(14.dp))
                             .background(Color(0xFF2563EB)),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -522,16 +497,16 @@ private fun OriginSpaceMainHub(
                             imageVector = Icons.Default.Animation,
                             contentDescription = "Иконка приложения",
                             tint = Color.White,
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(24.dp),
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Title
                     Text(
                         text = "Пространство Origin",
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = modalTitleColor,
                         textAlign = TextAlign.Center,
@@ -541,31 +516,31 @@ private fun OriginSpaceMainHub(
 
                     Text(
                         text = "Версия 2.4 • SuperX Build",
-                        fontSize = 12.sp,
+                        fontSize = 11.5.sp,
                         color = if (dark) Color(0xFF94A3B8) else Color(0xFF64748B),
+                        textAlign = TextAlign.Center,
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // App Description
+                    Text(
+                        text = "Интеграция с динамическим островом OriginOS (OriginIsland) для трансляции уведомлений, мессенджеров и медиаплеера на смартфонах vivo.",
+                        fontSize = 11.5.sp,
+                        lineHeight = 16.sp,
+                        color = modalSubtitleColor,
                         textAlign = TextAlign.Center,
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // App Description
-                    Text(
-                        text = "Интеграция с динамическим островом OriginOS (OriginIsland) для трансляции уведомлений, мессенджеров и медиаплеера на смартфонах vivo.",
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        color = modalSubtitleColor,
-                        textAlign = TextAlign.Center,
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
                     // Developer Info Badge
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(modalDevBoxBg)
-                            .padding(vertical = 8.dp, horizontal = 12.dp),
+                            .padding(vertical = 7.dp, horizontal = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(
@@ -573,14 +548,14 @@ private fun OriginSpaceMainHub(
                         ) {
                             Text(
                                 text = "Разработчик: Lenovoved",
-                                fontSize = 12.5.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = modalDevTextColor,
                                 textAlign = TextAlign.Center,
                             )
                             Text(
                                 text = "Оптимизировано под vivo OriginOS",
-                                fontSize = 11.sp,
+                                fontSize = 10.5.sp,
                                 color = if (dark) Color(0xFF94A3B8) else Color(0xFF64748B),
                                 textAlign = TextAlign.Center,
                             )
@@ -600,6 +575,45 @@ private fun OriginSpaceMainHub(
     }
 }
 
+private data class HubItem(
+    val icon: ImageVector,
+    val iconColor: Color,
+    val title: String,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun SettingsCardGroup(
+    items: List<HubItem>,
+    containerColor: Color,
+    dividerColor: Color,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column {
+            items.forEachIndexed { index, item ->
+                SettingsHubRow(
+                    icon = item.icon,
+                    iconColor = item.iconColor,
+                    title = item.title,
+                    onClick = item.onClick,
+                )
+                if (index < items.size - 1) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 58.dp),
+                        color = dividerColor,
+                        thickness = 0.8.dp,
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun SettingsHubRow(
     icon: ImageVector,
@@ -608,8 +622,8 @@ private fun SettingsHubRow(
     onClick: () -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
-    val textColor = if (dark) Color(0xFFF1F5F9) else Color(0xFF1E293B)
-    val arrowColor = if (dark) Color(0xFF64748B) else Color(0xFFCBD5E1)
+    val textColor = if (dark) Color.White else Color(0xFF1C1C1E)
+    val arrowColor = if (dark) Color(0xFF636366) else Color(0xFFC7C7CC)
 
     Row(
         modifier = Modifier
@@ -619,7 +633,7 @@ private fun SettingsHubRow(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 18.dp, vertical = 17.dp),
+            .padding(horizontal = 18.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -644,10 +658,10 @@ private fun SettingsHubRow(
         }
 
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = "Открыть",
             tint = arrowColor,
-            modifier = Modifier.size(15.dp),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
