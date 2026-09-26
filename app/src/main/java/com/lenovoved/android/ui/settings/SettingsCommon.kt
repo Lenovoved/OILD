@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +53,11 @@ fun SettingsTopBar(
     subtitle: String? = null,
     onBack: () -> Unit,
 ) {
+    val dark = isSystemInDarkTheme()
+    val btnBg = if (dark) Color(0xFF1E293B) else Color.White
+    val titleColor = if (dark) Color(0xFFF8FAFC) else Color(0xFF1E293B)
+    val subColor = if (dark) Color(0xFF94A3B8) else Color(0xFF64748B)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -65,13 +71,13 @@ fun SettingsTopBar(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color.White)
+                .background(btnBg)
                 .shadow(1.dp, CircleShape),
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Назад",
-                tint = Color(0xFF1E293B),
+                tint = titleColor,
             )
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -79,13 +85,13 @@ fun SettingsTopBar(
                 text = title,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E293B),
+                color = titleColor,
             )
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     text = subtitle,
                     fontSize = 12.5.sp,
-                    color = Color(0xFF64748B),
+                    color = subColor,
                 )
             }
         }
@@ -97,16 +103,19 @@ fun SettingsCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val dark = isSystemInDarkTheme()
+    val cardBg = if (dark) Color(0xFF1E293B) else Color.White
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 2.dp,
                 shape = RoundedCornerShape(22.dp),
-                spotColor = Color(0x12000000),
+                spotColor = if (dark) Color(0x33000000) else Color(0x12000000),
             ),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
@@ -122,6 +131,9 @@ fun SettingsSectionHeader(
     icon: ImageVector? = null,
     iconTint: Color = Color(0xFF1677FF),
 ) {
+    val dark = isSystemInDarkTheme()
+    val titleColor = if (dark) Color(0xFFF8FAFC) else Color(0xFF1E293B)
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -139,7 +151,7 @@ fun SettingsSectionHeader(
             text = title,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E293B),
+            color = titleColor,
         )
     }
 }
@@ -152,6 +164,10 @@ fun SettingsToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val dark = isSystemInDarkTheme()
+    val titleColor = if (dark) Color(0xFFF1F5F9) else Color(0xFF1E293B)
+    val subColor = if (dark) Color(0xFF94A3B8) else Color(0xFF64748B)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -165,7 +181,7 @@ fun SettingsToggleRow(
                 text = title,
                 fontSize = 14.5.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF1E293B),
+                color = titleColor,
             )
             if (!subtitle.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(2.dp))
@@ -173,7 +189,7 @@ fun SettingsToggleRow(
                     text = subtitle,
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
-                    color = Color(0xFF64748B),
+                    color = subColor,
                 )
             }
         }
@@ -195,6 +211,10 @@ fun SettingsSliderRow(
     minLabel: String = "",
     maxLabel: String = "",
 ) {
+    val dark = isSystemInDarkTheme()
+    val labelColor = if (dark) Color(0xFFE2E8F0) else Color(0xFF334155)
+    val inactiveTrackColor = if (dark) Color(0xFF334155) else Color(0xFFE2E8F0)
+
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -205,7 +225,7 @@ fun SettingsSliderRow(
                 text = label,
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF334155),
+                color = labelColor,
             )
             Text(
                 text = valueDisplay,
@@ -220,7 +240,7 @@ fun SettingsSliderRow(
             valueRange = valueRange,
             steps = steps,
             activeColor = Color(0xFF0066FF),
-            inactiveColor = Color(0xFFE2E8F0),
+            inactiveColor = inactiveTrackColor,
         )
         if (minLabel.isNotBlank() || maxLabel.isNotBlank()) {
             Row(
@@ -240,6 +260,10 @@ fun <T> SettingsChipsRow(
     selectedItem: T,
     onSelect: (T) -> Unit,
 ) {
+    val dark = isSystemInDarkTheme()
+    val unselectedBg = if (dark) Color(0xFF334155) else Color(0xFFF1F5F9)
+    val unselectedLabel = if (dark) Color(0xFFE2E8F0) else Color(0xFF334155)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -259,10 +283,10 @@ fun <T> SettingsChipsRow(
                     )
                 },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(0xFF1677FF),
+                    selectedContainerColor = Color(0xFF2563EB),
                     selectedLabelColor = Color.White,
-                    containerColor = Color(0xFFF1F5F9),
-                    labelColor = Color(0xFF334155),
+                    containerColor = unselectedBg,
+                    labelColor = unselectedLabel,
                 ),
                 shape = RoundedCornerShape(12.dp),
             )

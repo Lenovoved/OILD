@@ -2,30 +2,50 @@ package com.lenovoved.android.ui.settings
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.lenovoved.android.service.NotificationCastListener
 import com.lenovoved.android.ui.PREFS_NAME
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun CategoriesSettingsScreen(
@@ -73,6 +93,41 @@ fun CategoriesSettingsScreen(
             subtitle = "Управление типами транслируемых событий в OriginIsland",
             onBack = onBack,
         )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Phone Island Mockup
+            PhoneIslandMockup()
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val dark = isSystemInDarkTheme()
+
+            Text(
+                text = "Пространство Origin",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (dark) Color(0xFFF8FAFC) else Color(0xFF1A1C1E),
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Интеграция с динамическим островом OriginOS. Каждый параметр вынесен в отдельную страницу для детальной настройки.",
+                fontSize = 13.5.sp,
+                lineHeight = 18.sp,
+                color = if (dark) Color(0xFF94A3B8) else Color(0xFF5F6368),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -231,6 +286,79 @@ fun CategoriesSettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(100.dp))
+        }
+    }
+}
+
+/**
+ * Phone Screen Mockup with top camera cutout pill and soft real-time clock.
+ */
+@Composable
+private fun PhoneIslandMockup() {
+    val dark = isSystemInDarkTheme()
+    val currentTime = remember {
+        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        sdf.format(Date())
+    }
+
+    Box(
+        modifier = Modifier
+            .width(170.dp)
+            .height(155.dp)
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(28.dp),
+                spotColor = if (dark) Color(0x33000000) else Color(0x12000000),
+                ambientColor = Color(0x08000000),
+            )
+            .clip(RoundedCornerShape(28.dp))
+            .background(if (dark) Color(0xFF1E293B) else Color.White)
+            .border(1.5.dp, if (dark) Color(0xFF334155) else Color(0xFFE5E8EB), RoundedCornerShape(28.dp)),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Dynamic Island cutout pill (Black pill with camera lenses)
+            Box(
+                modifier = Modifier
+                    .width(46.dp)
+                    .height(15.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFF1E1E20)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(5.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF323236)),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF28282B)),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = currentTime,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFFCCD1D7),
+                letterSpacing = 1.sp,
+            )
         }
     }
 }

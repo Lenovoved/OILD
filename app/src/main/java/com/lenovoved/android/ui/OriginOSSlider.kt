@@ -3,6 +3,7 @@ package com.lenovoved.android.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,10 +22,9 @@ import androidx.compose.ui.unit.dp
 
 /**
  * OriginOS-styled slider matching Vivo OriginOS:
- * - Rounded 10dp track with vivid blue (#0066FF) active section
- * - Soft gray (#E2E8F0) inactive track
- * - White circular thumb with drop shadow and a vibrant blue (#0066FF) 3.5dp accent ring,
- *   matching the OriginOSSwitch tumbler design.
+ * - Clean thin rounded track (5dp) with vivid blue (#0066FF) active section
+ * - Soft gray inactive track
+ * - Protruding white circular thumb (26dp) with drop shadow and vibrant blue (#0066FF, 4.5dp) accent ring.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,10 +36,12 @@ fun OriginOSSlider(
     steps: Int = 0,
     enabled: Boolean = true,
     activeColor: Color = Color(0xFF0066FF),
-    inactiveColor: Color = Color(0xFFE2E8F0),
-    thumbSize: Dp = 24.dp,
-    trackHeight: Dp = 10.dp,
+    inactiveColor: Color? = null,
+    thumbSize: Dp = 26.dp,
+    trackHeight: Dp = 5.dp,
 ) {
+    val dark = isSystemInDarkTheme()
+    val resolvedInactiveColor = inactiveColor ?: (if (dark) Color(0xFF334155) else Color(0xFFEAEAEE))
     val interactionSource = remember { MutableInteractionSource() }
 
     Slider(
@@ -55,13 +57,14 @@ fun OriginOSSlider(
                 modifier = Modifier
                     .size(thumbSize)
                     .shadow(
-                        elevation = 3.dp,
+                        elevation = 4.dp,
                         shape = CircleShape,
-                        spotColor = Color(0x33000000),
+                        spotColor = if (enabled) Color(0x660066FF) else Color(0x22000000),
+                        ambientColor = if (enabled) Color(0x330066FF) else Color(0x11000000),
                     )
                     .background(Color.White, CircleShape)
                     .border(
-                        width = 3.5.dp,
+                        width = 4.5.dp,
                         color = if (enabled) activeColor else Color(0xFF94A3B8),
                         shape = CircleShape,
                     ),
@@ -73,9 +76,9 @@ fun OriginOSSlider(
                 modifier = Modifier.height(trackHeight),
                 colors = SliderDefaults.colors(
                     activeTrackColor = activeColor,
-                    inactiveTrackColor = inactiveColor,
+                    inactiveTrackColor = resolvedInactiveColor,
                     disabledActiveTrackColor = activeColor.copy(alpha = 0.4f),
-                    disabledInactiveTrackColor = inactiveColor.copy(alpha = 0.6f),
+                    disabledInactiveTrackColor = resolvedInactiveColor.copy(alpha = 0.6f),
                 ),
             )
         },

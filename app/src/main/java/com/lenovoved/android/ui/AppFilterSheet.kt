@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -108,12 +109,13 @@ fun AppFilterSheet(
         }
     }
 
+    val dark = isSystemInDarkTheme()
     val allowedCount = apps.count { it.pkg !in ignored }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFFF9FAFB),
+        containerColor = if (dark) Color(0xFF1E293B) else Color(0xFFF9FAFB),
     ) {
         Column(
             modifier = Modifier
@@ -150,7 +152,7 @@ fun AppFilterSheet(
                             text = "Фильтр приложений",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1A1C1E),
+                            color = if (dark) Color(0xFFF8FAFC) else Color(0xFF1A1C1E),
                         )
                         Text(
                             text = if (loading) "Загрузка списка..." else "Разрешено $allowedCount из ${apps.size} приложений",
@@ -294,7 +296,7 @@ fun AppFilterSheet(
                                         text = app.label,
                                         fontSize = 14.5.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF1A1C1E),
+                                        color = if (dark) Color(0xFFF1F5F9) else Color(0xFF1A1C1E),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )

@@ -1,8 +1,10 @@
 package com.lenovoved.android.ui
 
 import android.app.Activity
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -39,11 +41,11 @@ val RobotoTypography = Typography(
 )
 
 private val OriginSpaceLightColorScheme = lightColorScheme(
-    primary = Color(0xFF1677FF),
+    primary = Color(0xFF2563EB),
     onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFE6F4FF),
     onPrimaryContainer = Color(0xFF0958D9),
-    secondary = Color(0xFF1677FF),
+    secondary = Color(0xFF2563EB),
     onSecondary = Color(0xFFFFFFFF),
     background = Color(0xFFF4F6F9),
     onBackground = Color(0xFF1A1C1E),
@@ -55,20 +57,42 @@ private val OriginSpaceLightColorScheme = lightColorScheme(
     outlineVariant = Color(0xFFF0F2F5),
 )
 
+private val OriginSpaceDarkColorScheme = darkColorScheme(
+    primary = Color(0xFF3B82F6),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFF1E3A8A),
+    onPrimaryContainer = Color(0xFFDBEAFE),
+    secondary = Color(0xFF3B82F6),
+    onSecondary = Color(0xFFFFFFFF),
+    background = Color(0xFF0F172A),
+    onBackground = Color(0xFFF8FAFC),
+    surface = Color(0xFF1E293B),
+    onSurface = Color(0xFFF8FAFC),
+    surfaceVariant = Color(0xFF334155),
+    onSurfaceVariant = Color(0xFF94A3B8),
+    outline = Color(0xFF334155),
+    outlineVariant = Color(0xFF1E293B),
+)
+
 @Composable
-fun OriginIsleTheme(content: @Composable () -> Unit) {
+fun OriginIsleTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit,
+) {
+    val colorScheme = if (darkTheme) OriginSpaceDarkColorScheme else OriginSpaceLightColorScheme
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
             window.statusBarColor = android.graphics.Color.TRANSPARENT
             val controller = WindowCompat.getInsetsController(window, view)
-            controller.isAppearanceLightStatusBars = true
-            controller.isAppearanceLightNavigationBars = true
+            controller.isAppearanceLightStatusBars = !darkTheme
+            controller.isAppearanceLightNavigationBars = !darkTheme
         }
     }
     MaterialTheme(
-        colorScheme = OriginSpaceLightColorScheme,
+        colorScheme = colorScheme,
         typography = RobotoTypography,
         content = content,
     )
