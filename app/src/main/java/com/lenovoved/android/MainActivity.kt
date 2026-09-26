@@ -117,6 +117,7 @@ import androidx.compose.material.icons.filled.Tune
 import com.lenovoved.android.ui.settings.CategoriesSettingsScreen
 import com.lenovoved.android.ui.settings.ColorsThemeSettingsScreen
 import com.lenovoved.android.ui.settings.DurationSettingsScreen
+import com.lenovoved.android.ui.settings.IPhoneHalfSilhouette
 import com.lenovoved.android.ui.settings.PermissionsSettingsScreen
 import com.lenovoved.android.ui.settings.SettingsCard
 import com.lenovoved.android.ui.settings.SettingsSectionHeader
@@ -265,10 +266,10 @@ private fun OriginSpaceMainHub(
     val mainHeaderTextColor = if (dark) Color.White else Color(0xFF1C1C1E)
     val cardContainerColor = if (dark) Color(0xFF1C1C1E) else Color.White
     val dividerColor = if (dark) Color(0xFF2C2C2E) else Color(0xFFF0F0F2)
-    val modalGlassBg = if (dark) Color(0xFF1C1C1E).copy(alpha = 0.98f) else Color.White.copy(alpha = 0.96f)
+    val modalGlassBg = if (dark) Color(0xFF1C1C1E).copy(alpha = 0.45f) else Color.White.copy(alpha = 0.45f)
     val modalBorderColor = if (dark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
     val modalTitleColor = if (dark) Color.White else Color(0xFF1C1C1E)
-    val modalSubtitleColor = if (dark) Color(0xFF8E8E93) else Color(0xFF6B7280)
+    val modalSubtitleColor = if (dark) Color(0xFFD1D5DB) else Color(0xFF1F2937)
     val modalDevBoxBg = if (dark) Color(0x220066FF) else Color(0x0C0066FF)
     val modalDevTextColor = if (dark) Color(0xFF60A5FA) else Color(0xFF0066FF)
     val infoBtnBg = if (showInfoDialog) Color(0xFF0066FF) else (if (dark) Color(0xFF1F1F21) else Color(0xFFEBEBEF))
@@ -339,7 +340,7 @@ private fun OriginSpaceMainHub(
             HubItem(
                 icon = Icons.Default.Layers,
                 iconColor = Color(0xFF10B981),
-                title = "Поверхности отображения",
+                title = "Область уведомлений",
                 onClick = { onNavigateTo(SettingsSubScreen.SURFACES) },
             ),
             HubItem(
@@ -356,7 +357,7 @@ private fun OriginSpaceMainHub(
             HubItem(
                 icon = Icons.Default.ColorLens,
                 iconColor = Color(0xFFF59E0B),
-                title = "Цветовая палитра и темы",
+                title = "Цвет времени уведомления",
                 onClick = { onNavigateTo(SettingsSubScreen.COLORS_THEME) },
             ),
             HubItem(
@@ -380,6 +381,19 @@ private fun OriginSpaceMainHub(
         )
     }
 
+    var dialogCenterInRoot by remember { mutableStateOf(Offset.Unspecified) }
+    var dialogSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val magnifierSize = remember(dialogSize) {
+        with(density) {
+            androidx.compose.ui.unit.DpSize(
+                dialogSize.width.toDp(),
+                dialogSize.height.toDp()
+            )
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -389,6 +403,21 @@ private fun OriginSpaceMainHub(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .then(
+                    if (showInfoDialog && dialogCenterInRoot.isSpecified && magnifierSize.width > 0.dp && magnifierSize.height > 0.dp) {
+                        Modifier.magnifier(
+                            sourceCenter = { dialogCenterInRoot },
+                            magnifierCenter = { dialogCenterInRoot },
+                            zoom = 1.2f,
+                            size = magnifierSize,
+                            cornerRadius = 24.dp,
+                            elevation = 0.dp,
+                            clip = true
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp),
@@ -428,6 +457,13 @@ private fun OriginSpaceMainHub(
                     )
                 }
             }
+
+            // Silhouette of top half of iPhone with animated Dynamic Island opening
+            IPhoneHalfSilhouette(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 18.dp),
+            )
 
             // Main Notification Sources Card
             SettingsCard {
@@ -525,7 +561,7 @@ private fun OriginSpaceMainHub(
 
                 SettingsToggleRow(
                     title = "Банковские чеки и платежи",
-                    subtitle = "Карточка успешной оплаты в стиле Wallet/Apple Pay, билеты на самолеты ✈ и поезда 🚆",
+                    subtitle = "Карточка успешной оплаты в стиле Wallet/Apple Pay, билеты на самолеты и поезда",
                     checked = paymentsOn,
                     onCheckedChange = { checked ->
                         paymentsOn = checked
@@ -588,6 +624,14 @@ private fun OriginSpaceMainHub(
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
                     .padding(top = 44.dp, end = 12.dp)
+                    .onGloballyPositioned { coords ->
+                        val position = coords.positionInRoot()
+                        dialogCenterInRoot = Offset(
+                            x = position.x + coords.size.width / 2f,
+                            y = position.y + coords.size.height / 2f
+                        )
+                        dialogSize = coords.size
+                    }
                     .graphicsLayer {
                         scaleX = popoutProgress
                         scaleY = popoutProgress
@@ -661,7 +705,7 @@ private fun OriginSpaceMainHub(
                     Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
-                        text = "Версия 2.4 • SuperX Build",
+                        text = "Версия 1.0.1 • SuperX Build",
                         fontSize = 11.5.sp,
                         color = if (dark) Color(0xFF94A3B8) else Color(0xFF64748B),
                         textAlign = TextAlign.Center,

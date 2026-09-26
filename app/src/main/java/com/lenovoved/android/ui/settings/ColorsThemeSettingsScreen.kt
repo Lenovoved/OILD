@@ -62,7 +62,7 @@ fun ColorsThemeSettingsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         SettingsTopBar(
-            title = "Цветовая палитра и темы",
+            title = "Цвет времени уведомления",
             subtitle = "Настройка акцентных цветов, звука и шаблонов капсулы",
             onBack = onBack,
         )

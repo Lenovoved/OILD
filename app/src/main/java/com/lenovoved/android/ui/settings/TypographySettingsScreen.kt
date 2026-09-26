@@ -100,7 +100,6 @@ fun TypographySettingsScreen(
                 SettingsChipsRow(
                     items = listOf(
                         "classic" to "Классический",
-                        "app_name_only" to "Только название приложения",
                         "compact" to "Компактный",
                         "expanded" to "Расширенный",
                         "minimal" to "Минималистичный",
@@ -225,103 +224,7 @@ fun TypographySettingsScreen(
                 }
             }
 
-            // Live Preview Card
-            SettingsCard {
-                SettingsSectionHeader("Предварительный просмотр", Icons.Default.FormatPaint)
 
-                val sampleAppLabel = "Telegram"
-                val sampleTitle = if (notifStyle == "app_name_only") sampleAppLabel else "Telegram • Александр Смирнов"
-                val sampleBody = "Привет! Встречаемся сегодня в 18:30 в кофейне у парка? Я уже заказал столик на летней террасе и жду подтверждения."
-                val timeString = if (showTimestamp) SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) else "18:30"
-
-                val capsuleTitle = when {
-                    notifStyle == "app_name_only" -> sampleAppLabel
-                    sampleTitle.length > capsuleChars -> sampleTitle.take(capsuleChars) + "…"
-                    else -> sampleTitle
-                }
-                val chip = if (timeString.length > capsuleChars) timeString.take(capsuleChars) + "…" else timeString
-                val body = if (sampleBody.length > bodyChars) sampleBody.take(bodyChars) + "…" else sampleBody
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(Color(0xFF0F172A))
-                        .padding(14.dp),
-                ) {
-                    // Pill
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(CircleShape)
-                            .background(Color(0xFF1E293B))
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF2563EB)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text("TG", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                            if (notifStyle != "minimal") {
-                                Text(
-                                    text = capsuleTitle,
-                                    color = Color.White,
-                                    fontSize = 12.5.sp,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                            }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF334155))
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                        ) {
-                            Text(
-                                text = chip,
-                                color = Color.White,
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Expanded Card
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xFF1E293B))
-                            .padding(12.dp),
-                    ) {
-                        Text(
-                            text = sampleTitle,
-                            color = Color(0xFF94A3B8),
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = body,
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            lineHeight = 19.sp,
-                        )
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.height(100.dp))
         }

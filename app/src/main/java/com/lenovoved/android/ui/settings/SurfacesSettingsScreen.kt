@@ -65,7 +65,7 @@ fun SurfacesSettingsScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         SettingsTopBar(
-            title = "Поверхности отображения",
+            title = "Область уведомлений",
             subtitle = "Выбор экранов системы vivo для показа элементов островка",
             onBack = onBack,
         )
